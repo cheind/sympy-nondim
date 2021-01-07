@@ -19,3 +19,4 @@ def test_quantities():
     assert not F.dimensionless
     assert not L.dimensionless
     assert (F/F).dimensionless
+    assert (F/(M*L/T**2)).dimensionless
