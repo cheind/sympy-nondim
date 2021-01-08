@@ -32,19 +32,19 @@ def basis_vec(i, n, dtype=None):
     e[i] = 1
     return e
 
-class TrackedMatrixManipulations:
-    '''Provides and tracks row/column operations on matrices.'''
-
+class MatrixState:
     def __init__(self, m):
         self.R, self.C = m.shape
-        self.m = m # Original matrix        
+        self.m = m
         self.dr = 0 # Number of deleted rows
         self.dc = 0 # Number of deleted cols
         self.rp = np.eye(self.R, dtype=m.dtype) # Sequence of row permutations
         self.cp = np.eye(self.C, dtype=m.dtype) # Sequence of col permutations
+        self.history = []
 
     @property
     def matrix(self):
+        '''Returns matrix as represented by the current state'''
         m = self.rp @ self.m @ self.cp
         return m[:self.R-self.dr, :self.C-self.dc]
 
@@ -53,37 +53,80 @@ class TrackedMatrixManipulations:
         '''Returns original row and column indices of the current matrix state.'''
         return np.where(self.rp)[1][:self.R-self.dr], np.where(self.cp.T)[1][:self.C-self.dc]
 
-    def swap_columns(self, i, j):
-        self.cp = self.cp @ binary_perm_matrix(i, j, self.C)
-        return self.matrix
+    def apply(self, op):
+        op.apply(self)
+        self.history.append(op)
+        return self
 
-    def swap_rows(self, i, j):
-        self.rp = binary_perm_matrix(i, j, self.R) @ self.rp
-        return self.matrix
+    def undo(self):
+        op = self.history.pop()
+        op.undo(self)
+        return self
 
-    def delete_rows(self, ids):
-        '''Deletes the given row indices by shuffling the deleted cols towards end of the matrix.'''
+    def undo_all(self):
+        while len(self.history) > 0:
+            self.undo()
+
+class UndoableMatrixOp:
+    def apply(self, state):
+        raise NotImplementedError()
+
+    def undo(self, state):
+        raise NotImplementedError()
+
+class SwapRowsOp(UndoableMatrixOp):
+    def __init__(self, i, j):
+        self.ids = (i,j)
+        
+    def apply(self, state):
+        self.p = binary_perm_matrix(self.ids[0], self.ids[1], state.R)
+        state.rp = self.p @ state.rp
+
+    def undo(self, state):
+        state.rp = self.p.T @ state.rp
+
+class SwapColsOp(UndoableMatrixOp):
+    def __init__(self, i, j):
+        self.ids = (i,j)
+        
+    def apply(self, state):
+        self.p = binary_perm_matrix(self.ids[0], self.ids[1], state.C)
+        state.cp = state.cp @ self.p
+
+    def undo(self, state):
+        state.cp = state.cp @ self.p.T
+
+
+class DeleteOp(UndoableMatrixOp):
+    def __init__(self, ids, rows=True):
         if isinstance(ids, int):
             ids = [ids]
-        p = self.delete_perm_matrix(ids, rows=True)
-        self.rp = p @ self.rp
-        self.dr += len(ids)
-        return self.matrix
-    
-    def delete_cols(self, ids):
-        '''Deletes the given column indices by shuffling the deleted cols towards end of the matrix.'''
-        if isinstance(ids, int):
-            ids = [ids]
-        p = self.delete_perm_matrix(ids, rows=False)
-        self.cp = self.cp @ p.T # note, transpose
-        self.dc += len(ids)
-        return self.matrix
+        self.ids = ids
+        self.rows = rows
 
-    def delete_perm_matrix(self, ids, rows=True):
+    def apply(self, state):
+        self.p = DeleteOp.delete_perm_matrix(state, self.ids, rows=self.rows)
+        if self.rows:            
+            state.rp = self.p @ state.rp
+            state.dr += len(self.ids)
+        else:
+            state.cp = state.cp @ self.p
+            state.dc += len(self.ids)
+
+    def undo(self, state):
+        if self.rows:            
+            state.dr -= len(self.ids)
+            state.rp = self.p.T @ state.rp            
+        else:
+            state.dc -= len(self.ids)
+            state.cp = state.cp @ self.p.T        
+
+    @staticmethod
+    def delete_perm_matrix(state, ids, rows=True):
         '''Returns the permutation matrix that moves deleted rows/columns to the end of the array.'''
-        N = self.R if rows else self.C
-        d = self.dr if rows else self.dc
-        pids = np.empty(N, dtype=np.int32) # each entry holds target row index
+        N = state.R if rows else state.C
+        d = state.dr if rows else state.dc
+        pids = np.arange(N).astype(dtype=np.int32) # each entry holds target row index
         upper = N - d # ignore already deleted ones        
         rcnt = count(upper-1, -1)
         cnt = count(0, 1)
@@ -94,6 +137,17 @@ class TrackedMatrixManipulations:
         for i in range(0,upper): 
             w = next(rcnt) if i in ids else next(cnt)
             pids[w] = i
-        return perm_matrix(pids)
-        
-        
+        p = perm_matrix(pids)
+        return p if rows else p.T
+
+def swap_rows(matrix_state, i, j):
+    return matrix_state.apply(SwapRowsOp(i, j))
+
+def swap_cols(matrix_state, i, j):
+    return matrix_state.apply(SwapColsOp(i, j))
+
+def delete_rows(matrix_state, ids):
+    return matrix_state.apply(DeleteOp(ids, rows=True))
+
+def delete_cols(matrix_state, ids):
+    return matrix_state.apply(DeleteOp(ids, rows=False))
