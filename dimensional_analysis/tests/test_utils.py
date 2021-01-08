@@ -41,3 +41,14 @@ def test_matrix_ops():
     ms.undo_all()
     assert_allclose(ms.matrix, m)
     
+    m = np.eye(4)
+    m[1] = 0
+    m[2] = 0
+    ms = u.MatrixState(m)
+    u.delete_rows(ms, u.zero_rows(ms.matrix))
+    assert_allclose(ms.matrix, [[1,0,0,0],[0,0,0,1]])
+    assert_allclose(ms.indices[0], [0,3])
+    assert_allclose(ms.indices[1], [0,1,2,3])
+    ms.undo_all()
+    assert_allclose(ms.matrix, m)
+    

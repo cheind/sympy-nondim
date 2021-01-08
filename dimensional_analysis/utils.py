@@ -151,3 +151,7 @@ def delete_rows(matrix_state, ids):
 
 def delete_cols(matrix_state, ids):
     return matrix_state.apply(DeleteOp(ids, rows=False))
+
+def zero_rows(m):
+    '''Returns indices of rows containing only zeros.'''
+    return np.where(np.all(np.isclose(m, 0), -1))[0]
