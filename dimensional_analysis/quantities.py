@@ -1,6 +1,8 @@
 import numpy as np
 
 class Quantity:
+    NBASEDIMS = None 
+    
     def __init__(self, exponents):        
         self.e = np.asarray(exponents)
 
@@ -65,7 +67,8 @@ class Quantity:
 def create_dimensional_system(name, *base_dimension_names):   
     klass = type(f'{name}Quantity', (Quantity,), {'base_dimensions':property(lambda self: base_dimension_names)})
     N = len(base_dimension_names)
+    klass.NBASEDIMS = N    
     e = np.eye(N)
-    return [klass(e[i].copy()) for i in range(N)]
+    return klass, [klass(e[i].copy()) for i in range(N)]
 
 
