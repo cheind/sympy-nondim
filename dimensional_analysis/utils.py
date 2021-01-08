@@ -33,6 +33,8 @@ def basis_vec(i, n, dtype=None):
     return e
 
 class TrackedMatrixManipulations:
+    '''Provides and tracks row/column operations on matrices.'''
+
     def __init__(self, m):
         self.R, self.C = m.shape
         self.m = m # Original matrix        
@@ -46,6 +48,11 @@ class TrackedMatrixManipulations:
         m = self.rp @ self.m @ self.cp
         return m[:self.R-self.dr, :self.C-self.dc]
 
+    @property
+    def indices(self):
+        '''Returns original row and column indices of the current matrix state.'''
+        return np.where(self.rp)[1][:self.R-self.dr], np.where(self.cp.T)[1][:self.C-self.dc]
+
     def swap_columns(self, i, j):
         self.cp = self.cp @ binary_perm_matrix(i, j, self.C)
         return self.matrix
@@ -55,6 +62,7 @@ class TrackedMatrixManipulations:
         return self.matrix
 
     def delete_rows(self, ids):
+        '''Deletes the given row indices by shuffling the deleted cols towards end of the matrix.'''
         if isinstance(ids, int):
             ids = [ids]
         p = self.delete_perm_matrix(ids, rows=True)
@@ -63,6 +71,7 @@ class TrackedMatrixManipulations:
         return self.matrix
     
     def delete_cols(self, ids):
+        '''Deletes the given column indices by shuffling the deleted cols towards end of the matrix.'''
         if isinstance(ids, int):
             ids = [ids]
         p = self.delete_perm_matrix(ids, rows=False)
