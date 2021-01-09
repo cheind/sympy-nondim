@@ -45,6 +45,10 @@ class Quantity:
         return self.e[n]
 
     @property
+    def exponents(self):
+        return self.e
+
+    @property
     def base_dimensions(self):
         raise NotImplementedError()
 

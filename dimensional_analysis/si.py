@@ -5,9 +5,12 @@ from .quantities import create_dimensional_system
 SIQuantity, (L,M,T) = create_dimensional_system('SI', 'L','M','T')
 
 """Dimensionless"""
-ONE = SIQuantity(np.zeros(SIQuantity.NBASEDIMS))
+one = SIQuantity(np.zeros(SIQuantity.NBASEDIMS))
 # Derived quantities
 """Force"""
 F = L*M/T**2
 """Pressure"""
-P = F/L**2
+pressure = F/L**2
+density = M/L**3
+torque = L**2*M*T**-2
+angle = one

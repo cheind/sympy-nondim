@@ -32,6 +32,8 @@ def basis_vec(i, n, dtype=None):
     e[i] = 1
     return e
 
+        
+
 class MatrixState:
     def __init__(self, m):
         self.R, self.C = m.shape
@@ -53,19 +55,8 @@ class MatrixState:
         '''Returns original row and column indices of the current matrix state.'''
         return np.where(self.rp)[1][:self.R-self.dr], np.where(self.cp.T)[1][:self.C-self.dc]
 
-    def apply(self, op):
-        op.apply(self)
-        self.history.append(op)
-        return self
-
-    def undo(self):
-        op = self.history.pop()
-        op.undo(self)
-        return self
-
-    def undo_all(self):
-        while len(self.history) > 0:
-            self.undo()
+    def transaction(self):
+        return MatrixTransaction(self)
 
 class UndoableMatrixOp:
     def apply(self, state):
@@ -140,17 +131,47 @@ class DeleteOp(UndoableMatrixOp):
         p = perm_matrix(pids)
         return p if rows else p.T
 
-def swap_rows(matrix_state, i, j):
-    return matrix_state.apply(SwapRowsOp(i, j))
+class MatrixTransaction:
+    def __init__(self, matrix_state):
+        self.matrix_state = matrix_state
+        self.committed = None
+        self.ops = None
 
-def swap_cols(matrix_state, i, j):
-    return matrix_state.apply(SwapColsOp(i, j))
+    def __enter__(self):
+        self.committed = False
+        self.ops = []
 
-def delete_rows(matrix_state, ids):
-    return matrix_state.apply(DeleteOp(ids, rows=True))
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.committed:
+            _undo_all()
 
-def delete_cols(matrix_state, ids):
-    return matrix_state.apply(DeleteOp(ids, rows=False))
+    def commit(self):
+        self.committed = True
+
+    def swap_rows(self, i, j):
+        return self._apply(SwapRowsOp(i, j))
+
+    def swap_cols(self, i, j):
+        return self._apply(SwapColsOp(i, j))
+
+    def delete_rows(self, ids):
+        return self._apply(DeleteOp(ids, rows=True))
+
+    def delete_cols(self, ids):
+        return self._apply(DeleteOp(ids, rows=False))
+
+    def _undo(self):
+        op = self.ops.pop()
+        op.undo(self)
+        return self
+
+    def _undo_all(self):
+        while len(self.ops) > 0:
+            self.undo()
+
+    def _apply(self, op):
+        op.apply(self.matrix_state)
+        self.ops.append(op)
 
 def zero_rows(m):
     '''Returns indices of rows containing only zeros.'''

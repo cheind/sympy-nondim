@@ -7,6 +7,7 @@ def test_permutation_matrices():
     m = np.arange(6).astype(np.float32).reshape(2,3)
     assert_allclose(u.binary_perm_matrix(0,1,2) @ m @ u.binary_perm_matrix(0,2,3), [[5,4,3],[2,1,0]])
 
+"""
 def test_matrix_ops():
     m = np.arange(9).astype(np.float32).reshape(3,3)
 
@@ -52,3 +53,4 @@ def test_matrix_ops():
     ms.undo_all()
     assert_allclose(ms.matrix, m)
     
+"""
