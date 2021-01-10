@@ -98,7 +98,6 @@ def nonsingular_A(dm, dm_meta):
         row_ids = list(row_ids) + zero_row_ids.tolist()
         dmr = dm.drop(dm.index[row_ids])
         dmr = dmr.reindex(columns=col_ids)
-
         if not np.isclose(np.linalg.det(matrix_A(dmr)), 0):
             _logger.debug(
                 f'Deletable rows {row_ids}'\
