@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+import logging
 from . import utils as u
+
+_logger = logging.getLogger('dimanalysis')
 
 # Applied Dimensional Analysis and Modeling, pp. 165
 
@@ -70,12 +73,14 @@ def ensure_nonsingular_A(dm, max_attempts=5):
     # All attempts exhausted, fail
     raise ValueError('A singular')
 
-def solve(*dvars, target=None):
-    if target is None:
-        target = dvars[0] / dvars[0] # dimensionless
+def solve(*dvars, q=None):
+    if q is None:
+        q = dvars[0] / dvars[0] # dimensionless
     # Ensure that submatrix A is nonsingular
     dm = dimensional_matrix(*dvars)    
     dm = ensure_nonsingular_A(dm)
+    
+    # how to handle q_i!=0 but i-th dimension deleted?
 
     print(dm)
 

@@ -1,33 +1,52 @@
 import numpy as np
+from .utils import basis_vec
 
-class Quantity:
-    NBASEDIMS = None 
-    
-    def __init__(self, exponents):        
+class DimensionalSystem:
+    def __init__(self, name, *base_dimension_names):
+        N = len(base_dimension_names)
+        assert N > 0, 'Need more than zero base dimensions'
+        self.name = name
+        self.base_dimension_names = base_dimension_names        
+        e = np.eye(N)
+        self.base_dimensions = [self.create(basis_vec(i,N)) for i in range(N)]
+        
+    def __len__(self):
+        return len(self.base_dimension_names)
+
+    @property
+    def unity(self):
+        return self.create(np.zeros(len(self)))
+
+    def create(self, exponents):
+        assert len(exponents) == len(self), 'Number of exponents does not match number of dimensions'
+        return Quantity(self, exponents)
+
+class Quantity:    
+    def __init__(self, sys, exponents):        
         self.e = np.asarray(exponents)
+        self.system = sys
+
 
     def __repr__(self):
-        return f'<{self.qcls.__name__} {str(self)}>'       
+        return f'<Quantity({self.system.name}) {str(self)}>'       
 
     def __str__(self):
         if self.dimensionless:
             return '1'
         else:
-            d = [self._fmt_dim(name,e) for name,e in zip(self.base_dimensions, self.e)]
-        return ''.join(d)
+            d = [self._fmt_dim(name,e) for name,e in zip(self.system.base_dimension_names, self.e)]
+            d = [dd for dd in d if dd != '']
+        return '*'.join(d)
 
     def __pow__(self, exponent):
-        cls = self.__class__
-        return cls(self.e*exponent)
+        return self._create(self.e*exponent)
 
     def __mul__(self, other):
-        cls = self.__class__     
-        assert isinstance(other, cls)        
-        return cls(self.e + other.e)
+        assert isinstance(other, Quantity)
+        return self._create(self.e + other.e)
 
     def __truediv__(self, other):    
-        cls = self.__class__
-        assert isinstance(other, cls)    
+        assert isinstance(other, Quantity)
         return self * (other**-1)
 
     def __array__(self):
@@ -39,18 +58,12 @@ class Quantity:
     def __len__(self):
         return len(self.e)
 
-    def __getitem__(self, i):
-        if i > len(self):
-            raise IndexError('Index out of range')
-        return self.e[n]
+    def _create(self, exponents):
+        return self.system.create(exponents)
 
     @property
     def exponents(self):
         return self.e
-
-    @property
-    def base_dimensions(self):
-        raise NotImplementedError()
 
     @property
     def dimensionless(self):
@@ -64,15 +77,11 @@ class Quantity:
         if np.allclose(e, 1): # misuse of allclose for scalars
             return name
         elif not np.allclose(e, 0):
-            return f'{name}({format(e,".2f").rstrip("0").rstrip(".")})'
+            return f'{name}**{format(e,".2f").rstrip("0").rstrip(".")}'
         else:
             return ''
 
-def create_dimensional_system(name, *base_dimension_names):   
-    klass = type(f'{name}Quantity', (Quantity,), {'base_dimensions':property(lambda self: base_dimension_names)})
-    N = len(base_dimension_names)
-    klass.NBASEDIMS = N    
-    e = np.eye(N)
-    return klass, [klass(e[i].copy()) for i in range(N)]
-
+def create_dimensional_system(name, *base_dimension_names):  
+    sys = DimensionalSystem(name, *base_dimension_names)
+    return sys 
 

@@ -1,23 +1,23 @@
-from ..si import L,M,T,F,pressure,one
+from .. import si
 from numpy.testing import assert_allclose
 
 def test_quantities():
-    assert len(L) == 3
+    assert len(si.L) == 3
 
-    assert str(L) == 'L'
-    assert str(M) == 'M'    
-    assert str(T) == 'T'    
-    assert str(F) == 'LMT(-2)'
-    assert str(pressure) == 'L(-1)MT(-2)'
-    assert str(M/M) == '1'
-    assert str(one) == '1'
+    assert str(si.L) == 'L'
+    assert str(si.M) == 'M'    
+    assert str(si.T) == 'T'    
+    assert str(si.F) == 'L*M*T**-2'
+    assert str(si.pressure) == 'L**-1*M*T**-2'
+    assert str(si.M/si.M) == '1'
+    assert str(si.unity) == '1'
 
-    assert_allclose(L, [1,0,0])
-    assert_allclose(M, [0,1,0])
-    assert_allclose(T, [0,0,1])
-    assert_allclose(F, [1,1,-2])
+    assert_allclose(si.L, [1,0,0])
+    assert_allclose(si.M, [0,1,0])
+    assert_allclose(si.T, [0,0,1])
+    assert_allclose(si.F, [1,1,-2])
 
-    assert not F.dimensionless
-    assert not L.dimensionless
-    assert (F/F).dimensionless
-    assert (F/(M*L/T**2)).dimensionless
+    assert not si.F.dimensionless
+    assert not si.L.dimensionless
+    assert (si.F/si.F).dimensionless
+    assert (si.F/(si.M*si.L/si.T**2)).dimensionless
