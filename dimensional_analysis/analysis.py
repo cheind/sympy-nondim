@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import logging
+import itertools as it
 from . import utils as u
 
 _logger = logging.getLogger('dimanalysis')
@@ -12,6 +13,36 @@ def dimensional_matrix(*dvars):
     data = {i:v.exponents for i,v in enumerate(dvars)}
     dm = pd.DataFrame(data, index=np.arange(len(data[0])))
     return dm
+
+class DimensionalSystemMeta:
+    def __init__(self, dm, q):
+        self.dm = dm
+        """Number of dimensions"""
+        self.n_d = dm.shape[0]
+        """Number of variables"""
+        self.n_v = dm.shape[1]
+        """Rank of dimensional matrix"""
+        self.rank = np.linalg.matrix_rank(dm)
+        """Number of possible independent variable products"""
+        self.n_p = None
+        if q.dimensionless:
+            self.n_p = self.n_v - self.n_d
+        else:
+            self.n_p = self.n_v - self.n_d + 1
+        """Shape of matrix A"""
+        self.shape_A = (self.rank, self.rank)
+
+    @property
+    def square(self):
+        return self.n_d == self.n_v
+
+    @property
+    def delta(self):
+        return self.n_d - self.rank
+    
+    @property
+    def singular(self):
+        return not self.square or np.close(np.linalg.det(self.dm),0)
 
 def matrix_A(dm):
     '''Returns submatrix A of dimensional matrix'''
@@ -37,6 +68,51 @@ def matrix_E(A, B):
         [np.eye(n_v-n_d), np.zeros((n_v-n_d, n_d))],
         [-Ainv@B, Ainv]
     ])
+
+def nonsingular_A(dm, dm_meta):
+    assert isinstance(dm_meta, DimensionalSystemMeta)
+    zero_row_mask = np.all(np.isclose(dm, 0), -1)
+    zero_row_ids = np.where(zero_row_mask)[0]
+    n_z = len(zero_row_ids)
+
+    # possible ways to remove rows to adjust for rank deficit 
+    # (excluding zero rows)
+    rowc = it.combinations(np.where(~zero_row_mask)[0], r=dm_meta.delta-n_z)
+    # Possible ways to swap columns. Specific elements of permutation
+    # that represent no-op swaps (in terms of singularity of A) are
+    # filtered below
+    cols_of_A = set(range(dm_meta.n_v-dm_meta.shape_A[0],dm_meta.n_v))
+    colp = it.permutations(range(dm_meta.n_v))
+    def valid_col_permutation(i,p):
+        # Determine if this permutation is actually bringing a new 
+        # column to A. i==0 is also allowed as it represented the
+        # identity transform which we need to test anyways.
+        # TODO consider Theorem 9-8 for a speed-up.
+        s = set(p[dm_meta.shape_A[1]:])
+        return i == 0 or len(cols_of_A ^ s) > 0
+    colp = (p for i,p in enumerate(colp) if valid_col_permutation(i,p))
+
+    for idx, (row_ids, col_ids) in enumerate(it.product(rowc, colp)):
+        # Always delete all-zero rows as they represent dimensions
+        # that are not represented in the variables.
+        row_ids = list(row_ids) + zero_row_ids.tolist()
+        dmr = dm.drop(dm.index[row_ids])
+        dmr = dmr.reindex(columns=col_ids)
+
+        if not np.isclose(np.linalg.det(matrix_A(dmr)), 0):
+            _logger.debug(
+                f'Deletable rows {row_ids}'\
+                f', column order {col_ids}.'
+            )
+            return (row_ids, col_ids)
+
+    # Failed
+    _logger.error( 
+        'Matrix A is singular.' \
+        'All attempts to make it nonsingular failed.')
+    raise ValueError('Matrix A singular.')
+
+
 
 def ensure_nonsingular_A(dm, q, max_attempts=5):
     '''Ensures that submatrix A of the dimensional matrix is nonsingular.
