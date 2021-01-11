@@ -151,7 +151,7 @@ def ensure_nonsingular_A(dm, dm_meta):
         # that are not represented in the variables.
         row_ids = list(row_ids) + zero_row_ids.tolist()
         dmr, _ = u.remove_rows(dm, row_ids)
-        dmr = u.permute_columns(dmr, col_ids)
+        dmr, _ = u.permute_columns(dmr, col_ids)
         if not np.isclose(np.linalg.det(matrix_A(dmr)), 0):
             _logger.debug(
                 f'Deletable rows {row_ids}'\
@@ -184,7 +184,7 @@ def solve(dvars, q=None):
         raise ValueError('All-zero row r has to imply q[r]=0.')
 
     dmr, orow_ids = u.remove_rows(dm, drow_ids)
-    dmr = u.permute_columns(dmr, col_perm)
+    dmr, inv_col_perm = u.permute_columns(dmr, col_perm)
     qr, _ = u.remove_rows(q, drow_ids) 
     # Recompute meta information on potentially reduced matrix
     dmr_meta  = DimensionalSystemMeta(dmr, qr)
@@ -221,6 +221,7 @@ def solve(dvars, q=None):
 
     # Get products
     P = E @ Z
-    return P.T # TODO: restore original column order and add deleted rows
+    # Fix column reorder and return transpose, i.e solutions in rows
+    return P.T[:, inv_col_perm]
 
     

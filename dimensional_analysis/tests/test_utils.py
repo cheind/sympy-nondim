@@ -12,6 +12,7 @@ def test_remove_rows():
 def test_permute_columns():
     a = np.arange(10).reshape(2,5)
     perm = [2,1,0,3,4]
-    aa = u.permute_columns(a, perm)
+    aa, inv_perm = u.permute_columns(a, perm)
     assert_allclose(aa, [[2,1,0,3,4],[7,6,5,8,9]])
     assert_allclose(a[:,perm], aa)
+    assert_allclose(aa[:,inv_perm], a)

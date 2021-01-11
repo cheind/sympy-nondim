@@ -45,10 +45,12 @@ def permute_columns(a, perm):
     Returns
     -------
     m : MxN array
-        Permuted array
+        Permuted array        
+    inv_perm: N array-like
+        Inverse permutation order
     '''
     a = np.atleast_2d(a)
-    return a[:, perm]
+    return a[:, perm], np.argsort(perm)
 
 
 def dimensionless(q):
