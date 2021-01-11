@@ -70,6 +70,31 @@ def matrix_E(A, B):
     ])
 
 def nonsingular_A(dm, dm_meta):
+    '''Ensures that submatrix A of the dimensional matrix is nonsingular.
+
+    Nonsingularity of A is required as the inverse of A is used to determine
+    exponent coefficients of the solution. The method implemented is aligned
+    with "Applied Dimensional Analysis and Modeling" pp. 144-147.
+
+    Params
+    ------
+    dm : pd.DataFrame
+        Dimensional matrix (DxV) as returned by `dimensional_matrix`. We use dataframes to keep track of original row/column names.
+    dm_meta : DimensionalSystemMeta
+        Meta information about the system to solve for.
+
+    Returns
+    -------
+    row_ids: array-like
+        Row indices to delete
+    col_perm: array-like
+        Column permutation
+
+    Raises
+    ------
+    ValueError
+        If A could not be made nonsingular.
+    '''
     assert isinstance(dm_meta, DimensionalSystemMeta)
     zero_row_mask = np.all(np.isclose(dm, 0), -1)
     zero_row_ids = np.where(zero_row_mask)[0]
@@ -111,105 +136,49 @@ def nonsingular_A(dm, dm_meta):
         'All attempts to make it nonsingular failed.')
     raise ValueError('Matrix A singular.')
 
+def solve(*dvars, q=None):
+    if q is None:
+        q = dvars[0] / dvars[0] # unity, dimensionless products
 
-
-def ensure_nonsingular_A(dm, q, max_attempts=5):
-    '''Ensures that submatrix A of the dimensional matrix is nonsingular.
-
-    Nonsingularity of A is required as the inverse of A is used to determine
-    exponent coefficients of the solution. The method implemented is aligned
-    with "Applied Dimensional Analysis and Modeling" pp. 144-147 but differs
-    in that randomized row-delete / col-swap attempts are executed. Thus,
-    even if A could be made nonsingular, this method might fail. In case, try 
-    to increase the number of attempts made.
-
-    Params
-    ------
-    dm : pd.DataFrame
-        Dimensional matrix (DxV) as returned by `dimensional_matrix`. We use dataframes to keep track of original row/column names.
-    q : pd.DataFrame
-        Dimensional matrix (Dx1) representing the target exponents. Passed, to keep ops on `dm` in sync with `q`.
-    max_attempts: int, optional
-        Number of randomized attempts to make A nonsingular.
-
-    Returns
-    -------
-    dm' : pd.DataFrame
-        Potentially reduced dimensional matrix (D'xV) to make A nonsingular
-    q' : pd.DataFrame
-        Potentially reduced target dimensional matrix (D'x1) required to make A
-        nonsingular
-
-    Raises
-    ------
-    ValueError
-        If A could not be made nonsingular.
-    '''
-        
-    def correct(dm, q):
-        if not np.isclose(np.linalg.det(matrix_A(dm)), 0):
-            return dm, q, True
-        # A is singular
-        n_d, n_v = dm.shape
-        r_dm = np.linalg.matrix_rank(dm)
-        delta = n_d - r_dm
-        if delta > 0:
-            # Number of dimensions exceeds rank -> no exchange could make 
-            # rightmost det nonzero apply method 2
-            row_ids = np.random.choice(n_d, size=delta, replace=False)
-            dm = dm.drop(dm.index[row_ids])
-            q = q.drop(q.index[row_ids])
-            if not np.isclose(np.linalg.det(matrix_A(dm)), 0):
-                return dm, q, True
-        # A is still non-singular and delta = 0 -> randomly permute columns
-        dm = dm.reindex(columns=np.random.permutation(dm.columns))
-        return dm, q, not np.isclose(np.linalg.det(matrix_A(dm)), 0)
-
-    # Remove all-zero rows that correspond to absent dimensions
-    zero_row_mask = u.zero_rows(dm)
-    dm = dm.drop(dm.index[zero_row_mask])
-    q = q.drop(q.index[zero_row_mask])
-    # Randomized attempts to fix singularity of A 
-    for _ in range(max_attempts):
-        dm_new, q, success = correct(dm)
-        if success:
-            return dm_new, q
-    # All attempts exhausted, fail
-    _logger.warn(
-        'Matrix A is singular. All attempts to make it nonsingular failed.' \
-        'However this method is non-deterministic. Try increasing the number' \
-        'of attempts.')
-    raise ValueError('Matrix A singular.')
-
-def solve(*dvars, target=None):
-    if target is None:
-        target = dvars[0] / dvars[0] # unity, dimensionless products
-
-
-    # Ensure that submatrix A is nonsingular
     dm = dimensional_matrix(*dvars)
-    q = dimensional_matrix(target)  
-    dm = ensure_nonsingular_A(dm, q)
-    
-    # how to handle q_i!=0 but i-th dimension deleted?
+    qdm = dimensional_matrix(q)
+    dm_meta = DimensionalSystemMeta(dm, q)
+    row_ids, col_perm = nonsingular_A(dm, dm_meta)
 
-    print(dm)
+    # All-zero rows of dm matrix correspond to non zero entries
+    # in q. This makes no sense, as missing dimension in a system 
+    # of variables cannot be restored.
+    if any([q[i]!=0. for i in u.zero_rows(dm)]):        
+        _logger.error( 
+            'All-zero rows of dimensional matrix must correspond' \
+            'to zero components in q.')
+        raise ValueError('All-zero row r has to imply q[r]=0.')
 
-    pass
+    # Dimensional matrix (dm) has more dims than vars, then possible have
+    # a solution its rank must be rank <= vars - 1 by Theorem 7-6.
+    # TODO: perform this test on the reduced dm.
+    if (q.dimensionless and 
+        dm_meta.n_d > dm_meta.n_v and 
+        dm_meta.rank > dm_meta.n_v - 1
+        ):
+        _logger.error( 
+            'Rank of dimensional matrix must be <= number of vars - 1' \
+            'by Theorem 7-6.'
+        )
+        raise ValueError('Rank must be <= number of vars - 1. See Theorem 7-6.')
 
-"""
-def solve(dvars, target):
-    dm = dimensional_matrix(*dvars)
-    # Remove all-zero rows that correspond to unused dimensions
-    utils.zero_rows(dm)
+    # If dm is square it must be singular when number of non-zero
+    # q components is zero. See Theorem 7-5 "Applied Dimensional 
+    # Analysis and Modeling". 
+    # TODO: perform this test on the reduced dm.
+    if dm_meta.square and q.dimensionless and not dm_meta.singular:
+        _logger.error(
+            'Dimensional matrix must be singular when q is dimensionless' \
+            'and number of variables equals number of dimensions.' \
+            'See Theorem 7-5.'
+        )
+        raise ValueError('Dimensional matrix not singular. See Theorem 7-5.')
 
-
-def dimensional_set(dm, q):
-    assert isinstance(q, Quantity)
-
-    dm = _remove_zero_rows(dm)
-    nd, nv = dm.shape
-    rdm = np.linalg.matrix_rank(dm)
-
-# A singular? See pp. 144!
-"""
+    dmr = dm.drop(dm.index[row_ids])
+    dmr = dmr.reindex(columns=col_perm)
+    qdmr = qdm.drop(dm.index[row_ids])

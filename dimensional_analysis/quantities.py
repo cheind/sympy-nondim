@@ -26,7 +26,6 @@ class Quantity:
         self.e = np.asarray(exponents)
         self.system = sys
 
-
     def __repr__(self):
         return f'<Quantity({self.system.name}) {str(self)}>'       
 
@@ -61,13 +60,16 @@ class Quantity:
     def _create(self, exponents):
         return self.system.create(exponents)
 
+    def __getitem__(self, idx):
+        return self.e[idx]
+
     @property
     def exponents(self):
         return self.e
 
     @property
     def dimensionless(self):
-        return np.allclose(self.e, 0.)
+        return dimensionless(self)
 
     @property
     def shape(self):
@@ -84,4 +86,9 @@ class Quantity:
 def create_dimensional_system(name, *base_dimension_names):  
     sys = DimensionalSystem(name, *base_dimension_names)
     return sys 
+
+def dimensionless(q):
+    '''Returns if a quantity is dimensionless.'''
+    return np.allclose(q, 0.)
+
 
