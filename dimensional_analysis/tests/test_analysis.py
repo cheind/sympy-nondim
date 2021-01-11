@@ -106,14 +106,14 @@ def test_solve_78(vs_example_78):
     ])
     assert_dimensions(P, vs_example_78, si.L**2)
 
-    # With the above example, dimension 1 (mass) is removed and
-    # that's fine if we ask q to be length**2. If we instead change
-    # q to be mass, rather a different row (only 0 remains as 2,3 are
-    # dependent) should be removed
     dm = u.dimensional_matrix(vs_example_78)
     info = an.solver_info(dm, si.M**2)
     assert info.n_s == 2
-    P = an.solve(dm, si.M**2, keep_rows=[1,2])
+    P = an.solve(dm, si.M**2, keep_rows=[0,2])
+    from ..io import fmt_solution
+    print(fmt_solution(P, vs_example_78))
+
+    print(P)
     # print(P)
     # # assert P.shape == (4,5)
     # # assert_allclose(P, [
