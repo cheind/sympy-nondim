@@ -2,17 +2,17 @@ import numpy as np
 import pandas as pd
 import logging
 import itertools as it
+
 from . import utils as u
 
-_logger = logging.getLogger('dimanalysis')
+_logger = logging.getLogger('dimensional_analysis')
 
 # Applied Dimensional Analysis and Modeling, pp. 165
 
 def dimensional_matrix(*dvars):
     '''Returns the dimensional matrix formed by the given variables.'''
-    data = {i:v.exponents for i,v in enumerate(dvars)}
-    dm = pd.DataFrame(data, index=np.arange(len(data[0])))
-    return dm
+    cols = [np.asarray(v) for v in dvars]
+    return np.stack(cols, -1)
 
 class DimensionalSystemMeta:
     def __init__(self, dm, q):
@@ -25,12 +25,22 @@ class DimensionalSystemMeta:
         self.rank = np.linalg.matrix_rank(dm)
         """Number of possible independent variable products"""
         self.n_p = None
-        if q.dimensionless:
+        if u.dimensionless(q):
             self.n_p = self.n_v - self.n_d
         else:
             self.n_p = self.n_v - self.n_d + 1
-        """Shape of matrix A"""
+        """Shape of nonsingular matrix A"""
         self.shape_A = (self.rank, self.rank)
+        """Shape of matrix B to the left of A"""
+        self.shape_B = (self.rank, self.n_v - self.rank)
+        """Shape of matrix e containing the freely selectable exponents."""
+        self.shape_e = (self.n_v - self.rank, self.n_p)
+        """Shape of the matrix q that repeats the selectable dimensions of input `q` accross cols"""
+        self.shape_q = (self.rank, self.n_p)
+        """Shape of matrix Z which represents (e,q) stacked along rows."""
+        self.shape_Z = (self.n_v, self.n_p)
+        """Shape of matrix E which contains blocks of I,0,A,B"""
+        self.shape_E = (self.n_v, self.n_v)
 
     @property
     def square(self):
@@ -69,7 +79,26 @@ def matrix_E(A, B):
         [-Ainv@B, Ainv]
     ])
 
-def nonsingular_A(dm, dm_meta):
+def matrix_Z(dmr, qr, dm_meta):
+    N,M = dm_meta.shape_e
+    if N==M:
+        # Square e happens when dimensionless q is used, since then
+        # N_V - Rdm (rows) = N_p (cols)
+        e = np.eye(N)
+    else:
+        # Non-square N_V - Rdm + 1 (rows) = N_p (cols)
+        # Ensure that columns are independet. We freely set the
+        # last column to be [1,1,0...]
+        e = np.zeros((N,M))
+        e[:N, :N] = np.eye(N)
+        e[:, -1] = np.zeros(N)
+        e[0, -1] = 1
+        e[1, -1] = 1
+
+    N,M = dm_meta.shape_q
+    return np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
+
+def ensure_nonsingular_A(dm, dm_meta):
     '''Ensures that submatrix A of the dimensional matrix is nonsingular.
 
     Nonsingularity of A is required as the inverse of A is used to determine
@@ -121,8 +150,8 @@ def nonsingular_A(dm, dm_meta):
         # Always delete all-zero rows as they represent dimensions
         # that are not represented in the variables.
         row_ids = list(row_ids) + zero_row_ids.tolist()
-        dmr = dm.drop(dm.index[row_ids])
-        dmr = dmr.reindex(columns=col_ids)
+        dmr, _ = u.remove_rows(dm, row_ids)
+        dmr = u.permute_columns(dmr, col_ids)
         if not np.isclose(np.linalg.det(matrix_A(dmr)), 0):
             _logger.debug(
                 f'Deletable rows {row_ids}'\
@@ -136,14 +165,14 @@ def nonsingular_A(dm, dm_meta):
         'All attempts to make it nonsingular failed.')
     raise ValueError('Matrix A singular.')
 
-def solve(*dvars, q=None):
+def solve(dvars, q=None):
+    assert len(dvars) > 0, 'Need at least one variable.'
     if q is None:
         q = dvars[0] / dvars[0] # unity, dimensionless products
 
     dm = dimensional_matrix(*dvars)
-    qdm = dimensional_matrix(q)
     dm_meta = DimensionalSystemMeta(dm, q)
-    row_ids, col_perm = nonsingular_A(dm, dm_meta)
+    drow_ids, col_perm = ensure_nonsingular_A(dm, dm_meta)
 
     # All-zero rows of dm matrix correspond to non zero entries
     # in q. This makes no sense, as missing dimension in a system 
@@ -154,12 +183,17 @@ def solve(*dvars, q=None):
             'to zero components in q.')
         raise ValueError('All-zero row r has to imply q[r]=0.')
 
-    # Dimensional matrix (dm) has more dims than vars, then possible have
+    dmr, orow_ids = u.remove_rows(dm, drow_ids)
+    dmr = u.permute_columns(dmr, col_perm)
+    qr, _ = u.remove_rows(q, drow_ids) 
+    # Recompute meta information on potentially reduced matrix
+    dmr_meta  = DimensionalSystemMeta(dmr, qr)
+
+    # Dimensional matrix (dmr) has more dims than vars, then possible have
     # a solution its rank must be rank <= vars - 1 by Theorem 7-6.
-    # TODO: perform this test on the reduced dm.
-    if (q.dimensionless and 
-        dm_meta.n_d > dm_meta.n_v and 
-        dm_meta.rank > dm_meta.n_v - 1
+    if (u.dimensionless(qr) and 
+        dmr_meta.n_d > dmr_meta.n_v and 
+        dmr_meta.rank > dmr_meta.n_v - 1
         ):
         _logger.error( 
             'Rank of dimensional matrix must be <= number of vars - 1' \
@@ -167,18 +201,26 @@ def solve(*dvars, q=None):
         )
         raise ValueError('Rank must be <= number of vars - 1. See Theorem 7-6.')
 
-    # If dm is square it must be singular when number of non-zero
+    # If dmr is square it must be singular when number of non-zero
     # q components is zero. See Theorem 7-5 "Applied Dimensional 
     # Analysis and Modeling". 
-    # TODO: perform this test on the reduced dm.
-    if dm_meta.square and q.dimensionless and not dm_meta.singular:
+    if dmr_meta.square and u.dimensionless(qr) and not dm_meta.singular:
         _logger.error(
-            'Dimensional matrix must be singular when q is dimensionless' \
+            '(Reduced) Dimensional matrix must be singular when q is dimensionless' \
             'and number of variables equals number of dimensions.' \
             'See Theorem 7-5.'
         )
-        raise ValueError('Dimensional matrix not singular. See Theorem 7-5.')
+        raise ValueError('(Reduced) dimensional matrix not singular. See Theorem 7-5.')
 
-    dmr = dm.drop(dm.index[row_ids])
-    dmr = dmr.reindex(columns=col_perm)
-    qdmr = qdm.drop(dm.index[row_ids])
+    # Form E and Z
+    A, B = matrix_A(dmr), matrix_B(dmr)
+    E = matrix_E(A, B)
+    Z = matrix_Z(dmr, qr, dm_meta)
+    assert E.shape == (dm_meta.shape_E)    
+    assert Z.shape == (dm_meta.shape_Z)
+
+    # Get products
+    P = E @ Z
+    return P.T # TODO: restore original column order and add deleted rows
+
+    

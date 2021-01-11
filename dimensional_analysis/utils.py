@@ -16,8 +16,8 @@ def remove_rows(a, ids):
 
     Params
     ------
-    a : MxN array
-        2D array
+    a : array
+        Array
     ids: array-like
         Indices of rows to remove
     
@@ -28,7 +28,6 @@ def remove_rows(a, ids):
     ids: array-like
         original indices of remaining rows
     '''
-    a = np.atleast_2d(a)
     mask = np.ones(a.shape[0], dtype=bool)
     mask[ids]=0
     return a[mask], np.arange(a.shape[0])[mask]
@@ -50,5 +49,10 @@ def permute_columns(a, perm):
     '''
     a = np.atleast_2d(a)
     return a[:, perm]
+
+
+def dimensionless(q):
+    '''Returns if a quantity is dimensionless.'''
+    return np.allclose(q, 0.)
 
     

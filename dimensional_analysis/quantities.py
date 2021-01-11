@@ -1,5 +1,5 @@
 import numpy as np
-from .utils import basis_vec
+from . import utils as u
 
 class DimensionalSystem:
     def __init__(self, name, *base_dimension_names):
@@ -8,7 +8,7 @@ class DimensionalSystem:
         self.name = name
         self.base_dimension_names = base_dimension_names        
         e = np.eye(N)
-        self.base_dimensions = [self.create(basis_vec(i,N)) for i in range(N)]
+        self.base_dimensions = [self.create(u.basis_vec(i,N)) for i in range(N)]
         
     def __len__(self):
         return len(self.base_dimension_names)
@@ -69,7 +69,7 @@ class Quantity:
 
     @property
     def dimensionless(self):
-        return dimensionless(self)
+        return u.dimensionless(self)
 
     @property
     def shape(self):
@@ -86,9 +86,4 @@ class Quantity:
 def create_dimensional_system(name, *base_dimension_names):  
     sys = DimensionalSystem(name, *base_dimension_names)
     return sys 
-
-def dimensionless(q):
-    '''Returns if a quantity is dimensionless.'''
-    return np.allclose(q, 0.)
-
 
