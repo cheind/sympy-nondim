@@ -86,8 +86,8 @@ def test_ensure_nonsingular_A(vs_example_72, vs_example_78):
 def assert_dimensions(P, invars, q):
     s = [reduce(
             lambda prev, z: prev*z[0]**z[1], 
-            zip(invars, p), 
-            si.unity) for p in P]
+            zip(invars, exponents), 
+            si.unity) for exponents in P]
     assert_allclose(s, np.tile(np.asarray(q).reshape(1,-1), (P.shape[0],1)), atol=1e-4)
 
 def test_solve(vs_example_72):
