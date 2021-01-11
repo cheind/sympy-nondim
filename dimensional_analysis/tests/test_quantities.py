@@ -1,5 +1,9 @@
-from .. import si
+import pytest
+import numpy as np
 from numpy.testing import assert_allclose
+from .test_fixtures import vs_example_72
+from .. import si
+from .. import quantities as quant
 
 def test_quantities():
     assert len(si.L) == 3

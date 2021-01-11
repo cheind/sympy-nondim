@@ -2,7 +2,7 @@ import numpy as np
 from .quantities import create_dimensional_system
 
 """SI base units length (L), mass (M) and time (T)"""
-system = create_dimensional_system('SI', 'L','M','T')
+system = create_dimensional_system('SI', 'L', 'M', 'T')
 L,M,T = system.base_dimensions
 unity = system.unity
 

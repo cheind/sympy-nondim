@@ -86,4 +86,3 @@ class Quantity:
 def create_dimensional_system(name, *base_dimension_names):  
     sys = DimensionalSystem(name, *base_dimension_names)
     return sys 
-

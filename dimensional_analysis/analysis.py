@@ -9,11 +9,6 @@ _logger = logging.getLogger('dimensional_analysis')
 
 # Applied Dimensional Analysis and Modeling, pp. 165
 
-def dimensional_matrix(*dvars):
-    '''Returns the dimensional matrix formed by the given variables.'''
-    cols = [np.asarray(v) for v in dvars]
-    return np.stack(cols, -1)
-
 class DimensionalSystemMeta:
     def __init__(self, dm, q):
         self.dm = dm
@@ -26,9 +21,9 @@ class DimensionalSystemMeta:
         """Number of possible independent variable products"""
         self.n_p = None
         if u.dimensionless(q):
-            self.n_p = self.n_v - self.n_d
+            self.n_p = self.n_v - self.rank
         else:
-            self.n_p = self.n_v - self.n_d + 1
+            self.n_p = self.n_v - self.rank + 1
         """Shape of nonsingular matrix A"""
         self.shape_A = (self.rank, self.rank)
         """Shape of matrix B to the left of A"""
@@ -56,31 +51,30 @@ class DimensionalSystemMeta:
 
 def matrix_A(dm):
     '''Returns submatrix A of dimensional matrix'''
-    dm = np.asarray(dm)
     n_d = dm.shape[0]
     A = dm[:, -n_d:]
     return A
 
 def matrix_B(dm):
     '''Returns submatrix B of dimensional matrix'''
-    dm = np.asarray(dm)
     n_d = dm.shape[0]
-    B = dm[:, :n_d-1]
+    B = dm[:, :dm.shape[1]-dm.shape[0]]
     return B
 
-def matrix_E(A, B):
+def matrix_E(A, B, dm_meta):
     '''Return extended matrix E consisting of blocks of A and B.'''
     A = np.asarray(A)
     B = np.asarray(B)
-    n_d, n_v = A.shape[0], A.shape[1] + B.shape[1]
+    rank, n_v = dm_meta.rank, dm_meta.n_v    
     Ainv = np.linalg.inv(A)
     return np.block([
-        [np.eye(n_v-n_d), np.zeros((n_v-n_d, n_d))],
+        [np.eye(n_v-rank), np.zeros((n_v-rank, rank))],
         [-Ainv@B, Ainv]
     ])
 
-def matrix_Z(dmr, qr, dm_meta):
+def matrix_Z(qr, dm_meta):
     N,M = dm_meta.shape_e
+
     if N==M:
         # Square e happens when dimensionless q is used, since then
         # N_V - Rdm (rows) = N_p (cols)
@@ -94,7 +88,7 @@ def matrix_Z(dmr, qr, dm_meta):
         e[:, -1] = np.zeros(N)
         e[0, -1] = 1
         e[1, -1] = 1
-
+    
     N,M = dm_meta.shape_q
     return np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
 
@@ -107,8 +101,8 @@ def ensure_nonsingular_A(dm, dm_meta):
 
     Params
     ------
-    dm : pd.DataFrame
-        Dimensional matrix (DxV) as returned by `dimensional_matrix`. We use dataframes to keep track of original row/column names.
+    dm : DxV array
+        Dimensional matrix (DxV) as returned by `dimensional_matrix`. 
     dm_meta : DimensionalSystemMeta
         Meta information about the system to solve for.
 
@@ -165,12 +159,17 @@ def ensure_nonsingular_A(dm, dm_meta):
         'All attempts to make it nonsingular failed.')
     raise ValueError('Matrix A singular.')
 
-def solve(dvars, q=None):
-    assert len(dvars) > 0, 'Need at least one variable.'
+def solve(dm, q=None):
+    if not isinstance(dm, np.ndarray):
+        dm = u.dimensional_matrix(dm)
     if q is None:
-        q = dvars[0] / dvars[0] # unity, dimensionless products
+        q = np.zeros(dm.shape[0]) # unity, dimensionless products
+    else:
+        q = np.asarray(q)
+    assert dm.ndim == 2, 'Invalid dimensional matrix dimensions.'
+    assert dm.size > 0, 'Need at least one variable.'    
+    assert len(q) == dm.shape[0], 'Target dimensions has incorrect number of components'
 
-    dm = dimensional_matrix(*dvars)
     dm_meta = DimensionalSystemMeta(dm, q)
     drow_ids, col_perm = ensure_nonsingular_A(dm, dm_meta)
 
@@ -214,12 +213,12 @@ def solve(dvars, q=None):
 
     # Form E and Z
     A, B = matrix_A(dmr), matrix_B(dmr)
-    E = matrix_E(A, B)
-    Z = matrix_Z(dmr, qr, dm_meta)
+    E = matrix_E(A, B, dm_meta)
+    Z = matrix_Z(qr, dm_meta)
     assert E.shape == (dm_meta.shape_E)    
     assert Z.shape == (dm_meta.shape_Z)
 
-    # Get products
+    # Form independent variable products
     P = E @ Z
     # Fix column reorder and return transpose, i.e solutions in rows
     return P.T[:, inv_col_perm]

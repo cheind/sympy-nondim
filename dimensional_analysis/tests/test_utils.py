@@ -1,5 +1,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
+
+from .test_fixtures import *
 from .. import utils as u
 
 def test_remove_rows():
@@ -16,3 +18,12 @@ def test_permute_columns():
     assert_allclose(aa, [[2,1,0,3,4],[7,6,5,8,9]])
     assert_allclose(a[:,perm], aa)
     assert_allclose(aa[:,inv_perm], a)
+
+@pytest.mark.usefixtures('vs_example_72')
+def test_dimensional_matrix(vs_example_72):
+    dm = u.dimensional_matrix([si.L,si.M,si.T])
+    assert_allclose(dm, np.eye(3))
+    dm = u.dimensional_matrix([si.L,si.F])
+    assert_allclose(dm, [[1, 1],[0, 1], [0, -2]])    
+    dm = u.dimensional_matrix(vs_example_72)
+    assert_allclose(dm, [[1,2,3,4,5],[2,4,3,0,2],[3,4,3,2,1]])
