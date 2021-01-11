@@ -88,10 +88,14 @@ def assert_dimensions(P, invars, q):
             lambda prev, z: prev*z[0]**z[1], 
             zip(invars, p), 
             si.unity) for p in P]
-    assert_allclose(s, np.tile(np.asarray(q).reshape(1,-1), (P.shape[0],1)))
+    assert_allclose(s, np.tile(np.asarray(q).reshape(1,-1), (P.shape[0],1)), atol=1e-4)
 
 def test_solve(vs_example_72):
     q = si.L**3*si.M**5*si.T**7
     P = an.solve(vs_example_72, q)
     assert P.shape == (3,5)
     assert_dimensions(P, vs_example_72, q)
+
+    P = an.solve(vs_example_72, si.unity)
+    assert P.shape == (2,5)
+    assert_dimensions(P, vs_example_72, si.unity)
