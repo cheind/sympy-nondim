@@ -35,21 +35,21 @@ def test_ensure_nonsingular_A(vs_example_72, vs_example_78):
     dm = u.dimensional_matrix(vs_example_72)
     q = si.unity
     dm_meta = an.DimensionalSystemMeta(dm, q)
-    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta)
+    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta, q)
     assert len(del_row) == 0
     assert_allclose(col_order,range(dm_meta.n_v))
 
     dm = u.dimensional_matrix(vs_example_78)
     q = si.unity
     dm_meta = an.DimensionalSystemMeta(dm, q)
-    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta)
+    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta, q)
     assert len(del_row) == 1
     assert del_row[0] in [1,2]
     assert_allclose(col_order,range(dm_meta.n_v))
 
     dm = u.dimensional_matrix([si.M, si.L, si.L])
     dm_meta = an.DimensionalSystemMeta(dm, si.unity)
-    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta)
+    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta, q)
     assert len(del_row) == 1
     assert del_row[0] == 2
     assert col_order in [
@@ -80,6 +80,7 @@ def test_solve_72(vs_example_72):
 @pytest.mark.usefixtures('vs_example_78')
 def test_solve_78(vs_example_78):
     # Example with a single row deletion
+    print(u.dimensional_matrix(vs_example_78))
     P = an.solve(u.dimensional_matrix(vs_example_78), si.L**2)
     assert P.shape == (4,5)
     assert_allclose(P, [
@@ -89,3 +90,27 @@ def test_solve_78(vs_example_78):
         [ 1.,  1.,  0., -1., -1.],
     ])
     assert_dimensions(P, vs_example_78, si.L**2)
+
+    # With the above example, dimension 1 (mass) is removed and
+    # that's fine if we ask q to be length**2. If we instead change
+    # q to be mass, rather a different row (only 0 remains as 2,3 are
+    # dependent) should be removed
+    # P = an.solve(u.dimensional_matrix(vs_example_78), si.M**2)
+    # print(P)
+    # # assert P.shape == (4,5)
+    # # assert_allclose(P, [
+    # #     [ 1.,  0.,  0.,  0.,  1.],
+    # #     [ 0.,  1.,  0., -1.,  0.],
+    # #     [ 0.,  0.,  1.,  0.,  1.],
+    # #     [ 1.,  1.,  0., -1., -1.],
+    # # ])
+    # assert_dimensions(P, vs_example_78, si.M**2)
+
+
+    # from ..io import fmt_solution
+    # print(fmt_solution(P, vs_example_78))
+
+
+
+    # what if we took q==si.M**2 which corresponds to the row being deleted?
+    # -> q becomes dimensionless

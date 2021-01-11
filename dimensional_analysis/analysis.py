@@ -4,6 +4,7 @@ import logging
 import itertools as it
 
 from . import utils as u
+from . import sanity_checks as checks
 
 _logger = logging.getLogger('dimensional_analysis')
 
@@ -92,7 +93,7 @@ def matrix_Z(qr, dm_meta):
     N,M = dm_meta.shape_q
     return np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
 
-def ensure_nonsingular_A(dm, dm_meta):
+def ensure_nonsingular_A(dm, dm_meta, q):
     '''Ensures that submatrix A of the dimensional matrix is nonsingular.
 
     Nonsingularity of A is required as the inverse of A is used to determine
@@ -103,6 +104,8 @@ def ensure_nonsingular_A(dm, dm_meta):
     ------
     dm : DxV array
         Dimensional matrix (DxV) as returned by `dimensional_matrix`. 
+    q : D array
+        Target dimensionality
     dm_meta : DimensionalSystemMeta
         Meta information about the system to solve for.
 
@@ -122,10 +125,18 @@ def ensure_nonsingular_A(dm, dm_meta):
     zero_row_mask = np.all(np.isclose(dm, 0), -1)
     zero_row_ids = np.where(zero_row_mask)[0]
     n_z = len(zero_row_ids)
+    zero_q_ids = set(np.where(np.isclose(q, 0))[0])
 
     # possible ways to remove rows to adjust for rank deficit 
-    # (excluding zero rows)
-    rowc = it.combinations(np.where(~zero_row_mask)[0], r=dm_meta.delta-n_z)
+    # (excluding zero rows). We also do not include any row i 
+    # for which q_i != 0
+    rowc = list(it.combinations(np.where(~zero_row_mask)[0], r=dm_meta.delta-n_z))
+    def preferred_row_selection(r):
+        return len(set(r) & zero_q_ids) > 0
+    preferred_rowc = [r for r in rowc if preferred_row_selection(r)]
+    not_preferred_rowc = [r for r in rowc if not preferred_row_selection(r)]
+    rowc = preferred_rowc + not_preferred_rowc
+
     # Possible ways to swap columns. Specific elements of permutation
     # that represent no-op swaps (in terms of singularity of A) are
     # filtered below
@@ -148,8 +159,8 @@ def ensure_nonsingular_A(dm, dm_meta):
         dmr, _ = u.permute_columns(dmr, col_ids)
         if not np.isclose(np.linalg.det(matrix_A(dmr)), 0):
             _logger.debug(
-                f'Deletable rows {row_ids}'\
-                f', column order {col_ids}.'
+                f'Removing rows {row_ids}'\
+                f', new column order {col_ids}.'
             )
             return (row_ids, col_ids)
 
@@ -171,16 +182,9 @@ def solve(dm, q=None):
     assert len(q) == dm.shape[0], 'Target dimensions has incorrect number of components'
 
     dm_meta = DimensionalSystemMeta(dm, q)
-    drow_ids, col_perm = ensure_nonsingular_A(dm, dm_meta)
+    drow_ids, col_perm = ensure_nonsingular_A(dm, dm_meta, q)
 
-    # All-zero rows of dm matrix correspond to non zero entries
-    # in q. This makes no sense, as missing dimension in a system 
-    # of variables cannot be restored.
-    if any([q[i]!=0. for i in u.zero_rows(dm)]):        
-        _logger.error( 
-            'All-zero rows of dimensional matrix must correspond' \
-            'to zero components in q.')
-        raise ValueError('All-zero row r has to imply q[r]=0.')
+    checks.assert_zero_q_when_all_zero_rows(dm, q)
 
     dmr, orow_ids = u.remove_rows(dm, drow_ids)
     dmr, inv_col_perm = u.permute_columns(dmr, col_perm)
@@ -188,28 +192,8 @@ def solve(dm, q=None):
     # Recompute meta information on potentially reduced matrix
     dmr_meta  = DimensionalSystemMeta(dmr, qr)
 
-    # Dimensional matrix (dmr) has more dims than vars, then possible have
-    # a solution its rank must be rank <= vars - 1 by Theorem 7-6.
-    if (u.dimensionless(qr) and 
-        dmr_meta.n_d > dmr_meta.n_v and 
-        dmr_meta.rank > dmr_meta.n_v - 1
-        ):
-        _logger.error( 
-            'Rank of dimensional matrix must be <= number of vars - 1' \
-            'by Theorem 7-6.'
-        )
-        raise ValueError('Rank must be <= number of vars - 1. See Theorem 7-6.')
-
-    # If dmr is square it must be singular when number of non-zero
-    # q components is zero. See Theorem 7-5 "Applied Dimensional 
-    # Analysis and Modeling". 
-    if dmr_meta.square and u.dimensionless(qr) and not dm_meta.singular:
-        _logger.error(
-            '(Reduced) Dimensional matrix must be singular when q is dimensionless' \
-            'and number of variables equals number of dimensions.' \
-            'See Theorem 7-5.'
-        )
-        raise ValueError('(Reduced) dimensional matrix not singular. See Theorem 7-5.')
+    checks.assert_no_rank_deficit(dmr_meta, qr)
+    checks.assert_square_singular(dmr_meta, qr)
 
     # Form E and Z
     A, B = matrix_A(dmr), matrix_B(dmr)
