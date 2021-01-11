@@ -61,5 +61,3 @@ def dimensional_matrix(dvars):
     '''Returns the dimensional matrix formed by the given variables.'''
     cols = [np.asarray(v) for v in dvars]
     return np.stack(cols, -1)
-
-    
