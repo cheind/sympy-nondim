@@ -28,8 +28,8 @@ def remove_rows(a, ids):
     ids: array-like
         original indices of remaining rows
     '''
-    mask = np.ones(a.shape[0], dtype=bool)
-    mask[ids]=0
+    mask = np.ones(a.shape[0], dtype=bool)    
+    mask[list(ids)]=0    
     return a[mask], np.arange(a.shape[0])[mask]
 
 def permute_columns(a, perm):

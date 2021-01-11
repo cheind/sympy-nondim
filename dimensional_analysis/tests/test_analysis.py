@@ -9,16 +9,18 @@ from .. import analysis as an
 from .. import utils as u
 
 @pytest.mark.usefixtures('vs_example_72')
-def test_matrix_system_meta(vs_example_72):
+def test_matrix_solver_info(vs_example_72):
     dm = u.dimensional_matrix(vs_example_72)        
-    meta = an.DimensionalSystemMeta(dm, si.unity)
-    assert not meta.square
-    assert meta.singular
-    assert meta.n_d == len(si.unity)
-    assert meta.n_v == len(vs_example_72)
-    assert meta.rank == 3
-    assert meta.delta == 0
-    assert meta.n_p == len(vs_example_72) - len(si.unity)
+    info = an.solver_info(dm, si.unity)
+    assert not info.square
+    assert info.singular
+    assert info.n_d == len(si.unity)
+    assert info.n_v == len(vs_example_72)
+    assert info.rank == 3
+    assert info.delta == 0
+    assert info.n_p == len(vs_example_72) - len(si.unity)
+    assert info.dimensionless
+    assert info.n_s == 3
 
 @pytest.mark.usefixtures('vs_example_72')
 def test_matrix_A_B_E(vs_example_72):
@@ -26,30 +28,43 @@ def test_matrix_A_B_E(vs_example_72):
     A, B = an.matrix_A(dm), an.matrix_B(dm)
     assert_allclose(A, [[3,4,5],[3,0,2],[3,2,1]])
     assert_allclose(B, [[1,2],[2,4],[3,4]])
-    E = an.matrix_E(A,B,an.DimensionalSystemMeta(dm, si.unity))
+    
+    E = an.matrix_E(A, B, an.solver_info(dm, si.unity))
     assert_allclose(E*30, [[30,0,0,0,0],[0,30,0,0,0],[-32,-48,-4,6,8],[-6,6,3,-12,9],[18,12,6,6,-12]])
+
+@pytest.mark.usefixtures('vs_example_78')
+def test_row_removal_generator(vs_example_78):
+    # 3 rows, 2/3 lin. dependent -> one row has to be removed
+    dm = u.dimensional_matrix(vs_example_78)
+    info = an.solver_info(dm, si.unity)
+    order = list(an.row_removal_generator(dm, info))
+    assert order == [(0,), (1,), (2,)]
+    
+    order = list(an.row_removal_generator(dm, info, keep_rows=[0,1]))
+    assert order == [(2,), (0,), (1,)]
+    
 
 @pytest.mark.usefixtures('vs_example_72')
 @pytest.mark.usefixtures('vs_example_78')
 def test_ensure_nonsingular_A(vs_example_72, vs_example_78):
     dm = u.dimensional_matrix(vs_example_72)
     q = si.unity
-    dm_meta = an.DimensionalSystemMeta(dm, q)
-    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta, q)
+    info = an.solver_info(dm, q)
+    del_row, col_order = an.ensure_nonsingular_A(dm, info)
     assert len(del_row) == 0
-    assert_allclose(col_order,range(dm_meta.n_v))
+    assert_allclose(col_order,range(info.n_v))
 
     dm = u.dimensional_matrix(vs_example_78)
     q = si.unity
-    dm_meta = an.DimensionalSystemMeta(dm, q)
-    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta, q)
+    info = an.solver_info(dm, q)
+    del_row, col_order = an.ensure_nonsingular_A(dm, info)
     assert len(del_row) == 1
     assert del_row[0] in [1,2]
-    assert_allclose(col_order,range(dm_meta.n_v))
+    assert_allclose(col_order,range(info.n_v))
 
     dm = u.dimensional_matrix([si.M, si.L, si.L])
-    dm_meta = an.DimensionalSystemMeta(dm, si.unity)
-    del_row, col_order = an.ensure_nonsingular_A(dm, dm_meta, q)
+    info = an.solver_info(dm, si.unity)
+    del_row, col_order = an.ensure_nonsingular_A(dm, info)
     assert len(del_row) == 1
     assert del_row[0] == 2
     assert col_order in [
@@ -95,7 +110,10 @@ def test_solve_78(vs_example_78):
     # that's fine if we ask q to be length**2. If we instead change
     # q to be mass, rather a different row (only 0 remains as 2,3 are
     # dependent) should be removed
-    # P = an.solve(u.dimensional_matrix(vs_example_78), si.M**2)
+    dm = u.dimensional_matrix(vs_example_78)
+    info = an.solver_info(dm, si.M**2)
+    assert info.n_s == 2
+    P = an.solve(dm, si.M**2, keep_rows=[1,2])
     # print(P)
     # # assert P.shape == (4,5)
     # # assert_allclose(P, [
