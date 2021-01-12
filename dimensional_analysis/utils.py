@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import count
+from functools import reduce
 
 def basis_vec(i, n, dtype=None):
     '''Returns the standard basis vector e_i in R^n.'''
@@ -57,7 +58,13 @@ def dimensionless(q):
     '''Returns if a quantity is dimensionless.'''
     return np.allclose(q, 0.)
 
-def dimensional_matrix(dvars):
+def dimensional_matrix(qs):
     '''Returns the dimensional matrix formed by the given variables.'''
-    cols = [np.asarray(v) for v in dvars]
+    cols = [np.asarray(q) for q in qs]
     return np.stack(cols, -1)
+
+def variable_product(qs, exponents):        
+    '''Returns the product of exponentiated variables.'''
+    dm = dimensional_matrix(qs)
+    exponents = np.asarray(exponents)
+    return (dm @ exponents.reshape(-1,1)).reshape(-1)

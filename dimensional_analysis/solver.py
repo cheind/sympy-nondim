@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import logging
 import itertools as it
+import string
 
 from . import utils as u
 from . import sanity_checks as checks
@@ -11,34 +12,53 @@ _logger = logging.getLogger('dimensional_analysis')
 # Applied Dimensional Analysis and Modeling, pp. 165
 
 class SolverInfo:
-    def __init__(self, dm, dimensionless=True):
-        self.dm = dm
-        """Number of dimensions"""
-        self.n_d = dm.shape[0]
-        """Number of variables"""
-        self.n_v = dm.shape[1]
-        """Rank of dimensional matrix"""
-        self.rank = np.linalg.matrix_rank(dm)
-        """Number of possible independent variable products"""
+    def __init__(self, variables, q):
+        if isinstance(variables, dict):
+            self.variables = list(variables.values())
+            self.variable_names = list(variables.keys())
+        else:
+            self.variables = list(variables)
+            self.variable_names = string.ascii_lowercase[:len(self.variables)]
+
+        if len(variables) == 0:
+            raise ValueError('Need at least one variable to continue')
+        self.dm = u.dimensional_matrix(self.variables)
+
+        '''Target dimensions'''
+        self.q = None
+        if q is None:
+            self.q = np.zeros(self.dm.shape[0]) # unity, dimensionless products
+        else:
+            self.q = np.asarray(q)
+        if len(self.q) != self.dm.shape[0]:
+            raise ValueError('Target dimensionality does not match variable dimensionality')
+
+        '''Number of dimensions'''
+        self.n_d = self.dm.shape[0]
+        '''Number of variables'''
+        self.n_v = self.dm.shape[1]
+        '''Rank of dimensional matrix'''
+        self.rank = np.linalg.matrix_rank(self.dm)
+        '''Number of possible independent variable products'''
         self.n_p = None
-        self.dimensionless = dimensionless
+        self.dimensionless = u.dimensionless(self.q)
         if self.dimensionless:
             self.n_p = self.n_v - self.rank
         else:
             self.n_p = self.n_v - self.rank + 1
-        """Number of selectable components (i.e rows/dimensions)"""
+        '''Number of selectable components (i.e rows/dimensions)'''
         self.n_s = self.rank
-        """Shape of nonsingular matrix A"""
+        '''Shape of nonsingular matrix A'''
         self.shape_A = (self.rank, self.rank)
-        """Shape of matrix B to the left of A"""
+        '''Shape of matrix B to the left of A'''
         self.shape_B = (self.rank, self.n_v - self.rank)
-        """Shape of matrix e containing the freely selectable exponents."""
+        '''Shape of matrix e containing the freely selectable exponents.'''
         self.shape_e = (self.n_v - self.rank, self.n_p)
-        """Shape of the matrix q that repeats the selectable dimensions of input `q` accross cols"""
+        '''Shape of the matrix q that repeats the selectable dimensions of input `q` accross cols'''
         self.shape_q = (self.rank, self.n_p)
-        """Shape of matrix Z which represents (e,q) stacked along rows."""
+        '''Shape of matrix Z which represents (e,q) stacked along rows.'''
         self.shape_Z = (self.n_v, self.n_p)
-        """Shape of matrix E which contains blocks of I,0,A,B"""
+        '''Shape of matrix E which contains blocks of I,0,A,B'''
         self.shape_E = (self.n_v, self.n_v)
 
     @property
@@ -53,9 +73,8 @@ class SolverInfo:
     def singular(self):
         return not self.square or np.close(np.linalg.det(self.dm),0)
 
-def solver_info(dm, q):
-    dimensionless = u.dimensionless(q)
-    return SolverInfo(dm, dimensionless=dimensionless)
+def solver_info(variables, q):
+    return SolverInfo(variables, q)
 
 def _matrix_A(dm, info):
     '''Returns submatrix A of dimensional matrix'''
@@ -83,8 +102,6 @@ def _matrix_E(A, B, info):
     ])
     assert E.shape == (info.shape_E)    
     return E
-    
-
 
 def _matrix_Z(qr, info):
     N,M = info.shape_e
@@ -205,32 +222,50 @@ def _ensure_nonsingular_A(dm, info, keep_rows=None):
     _logger.error( 
         'Matrix A is singular.' \
         'All attempts to make it nonsingular failed.')
-    raise ValueError('Matrix A singular.')
+    raise ValueError('Matrix A singular')   
 
-def solve(dm, q=None, keep_rows=None):
-    if not isinstance(dm, np.ndarray):
-        dm = u.dimensional_matrix(dm)
-    if q is None:
-        q = np.zeros(dm.shape[0]) # unity, dimensionless products
-    else:
-        q = np.asarray(q)
-    assert dm.ndim == 2, 'Invalid dimensional matrix dimensions.'
-    assert dm.size > 0, 'Need at least one variable.'    
-    assert len(q) == dm.shape[0], 'Target dimensions has incorrect number of components'
+class Solution:
+    def __init__(self, info, P):
+        self.P = P
+        self.info = info
 
-    info = solver_info(dm, q)
+    def __repr__(self):
+        return f'Solution<{self.P}>'
+
+    def __str__(self):        
+        if len(self.P) == 0:
+            return 'Found 0 solutions.'        
+
+        Vcls = self.info.variables[0].__class__    
+        finaldim = Vcls(u.variable_product(self.info.variables, self.P[0]))
+        m = f'Found {len(self.P)} variable products of dim. {finaldim}.\n'
+        for i,p in enumerate(self.P):
+            ve = [f'{v}**{e}' for v,e 
+            in zip(self.info.variable_names, p) if e!=0]
+            m = m + f'{i}: {"*".join(ve)}\n'
+        return m
+
+def solve(variables, q=None, keep_rows=None):
+    info = solver_info(variables, q)
+    dm = info.dm
+    q = info.q
+
     drow_ids, col_perm = _ensure_nonsingular_A(dm, info, keep_rows=keep_rows)
-
-    checks.assert_zero_q_when_all_zero_rows(dm, q)
+    checks.assert_zero_q_when_all_zero_rows(dm, q)  
+    if info.n_s < info.n_d:
+        _logger.info((
+            f'Number of selectable components is less than number dimensions. '
+            f'Values of non-selectable components {drow_ids} are computed '
+            f'may differ from values in q, which may be unexpected.'
+        ))
 
     dmr, orow_ids = u.remove_rows(dm, drow_ids)
     dmr, inv_col_perm = u.permute_columns(dmr, col_perm)
     qr, _ = u.remove_rows(q, drow_ids) 
     # Recompute meta information on potentially reduced matrix
-    dmr_meta  = solver_info(dmr, qr)
 
-    checks.assert_no_rank_deficit(dmr_meta, qr)
-    checks.assert_square_singular(dmr_meta, qr)
+    checks.assert_no_rank_deficit(dmr, qr, info.rank)
+    checks.assert_square_singular(dmr, qr)
 
     # Form E and Z
     A, B = _matrix_A(dmr, info), _matrix_B(dmr, info)
@@ -239,7 +274,8 @@ def solve(dm, q=None, keep_rows=None):
     
     # Form independent variable products (in columns)
     P = E @ Z    
-    # Fix column reorder and return transpose, i.e solutions in rows
-    return P.T[:, inv_col_perm]
+    # Revert column reorder and return transpose so that
+    # indep. variable products are in rows.
+    return Solution(info, P.T[:, inv_col_perm])
 
     

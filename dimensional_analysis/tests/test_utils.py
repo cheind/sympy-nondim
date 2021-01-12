@@ -27,3 +27,11 @@ def test_dimensional_matrix(vs_example_72):
     assert_allclose(dm, [[1, 1],[0, 1], [0, -2]])    
     dm = u.dimensional_matrix(vs_example_72)
     assert_allclose(dm, [[1,2,3,4,5],[2,4,3,0,2],[3,4,3,2,1]])
+
+
+@pytest.mark.usefixtures('vs_example_72')
+def test_variable_product(vs_example_72):        
+    v = u.variable_product([si.L,si.M,si.T], [2,1,2])
+    assert_allclose(v, [2,1,2])
+    v = u.variable_product([si.F,si.F], [1,-1])
+    assert_allclose(v, si.unity)

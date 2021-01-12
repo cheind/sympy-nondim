@@ -1,10 +1,10 @@
 import numpy as np
-from .quantities import create_dimensional_system
+from .quantities import Quantity
 
-"""SI base units length (L), mass (M) and time (T)"""
-system = create_dimensional_system('SI', 'L', 'M', 'T')
-L,M,T = system.base_dimensions
-unity = system.unity
+SIQuantity = Quantity.create_type('SIQuantity', 'LMT')
+
+L,M,T = SIQuantity.basevars()
+unity = SIQuantity.unity()
 
 F = L*M/T**2
 pressure = F/L**2
