@@ -9,13 +9,16 @@ The following example shows, a (single) relation between mass, force,
 and time produces length.
 
 ``` python
+import danalysis as da
+import danalysis.standard_units as si
+
 r = da.solve(
     {'a':si.M, 'b':si.F, 'c':si.T}, 
     si.L
 )
 print(r)
 # Found 1 variable products generating dimension L:
-#   1: [a**-1*b*c**2]=L
+#   1: [a**-1*b*c**2] = L
 ```
 
 This library is based on (Szirtes 2007) but also incorporates ideas from
