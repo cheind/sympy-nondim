@@ -22,8 +22,8 @@ print(r)
 #    2: [b**0.5*c*d**-0.5] = L*T
 ```
 
-This library is based on (Szirtes 2007) but also incorporates ideas from
-(Santiago 2019; Sonin 2001).
+This library is based on (Szirtes 2007), and also incorporates ideas and
+examples from (Santiago 2019; Sonin 2001).
 
 ## References
 
