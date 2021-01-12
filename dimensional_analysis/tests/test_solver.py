@@ -5,6 +5,7 @@ import string
 from numpy.testing import assert_allclose
 
 from .test_fixtures import *
+from .. quantities import Quantity
 from .. import si
 from .. import solver as slv
 from .. import utils as u
@@ -65,9 +66,12 @@ def assert_dimensions(P, invars, q):
     assert_allclose(s, np.tile(np.asarray(q).reshape(1,-1), (P.shape[0],1)), atol=1e-4)
 
 def test_solve_e_has_zero_rows():
-    r = slv.solve([si.M, si.F, si.T], si.L)
-    assert_dimensions(r.P, [si.M, si.F, si.T], si.M**-1*si.F*si.T**2)
-
+    # Number of solutions is 1 which makes e zero rows (no variables to choose freely).
+    Q = Quantity.create_type('Q', 'LMT')
+    L,M,T = Q.basevars()
+    F = M*L*T**-2
+    r = slv.solve([M, F, T], L)
+    assert_dimensions(r.P, [M, F, T], M**-1*F*T**2)
 
 @pytest.mark.usefixtures('vs_example_72')
 def test_solve_72(vs_example_72):
