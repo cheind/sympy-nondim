@@ -2,7 +2,7 @@ import numpy as np
 import logging
 from . import utils as u
 
-_logger = logging.getLogger('dimensional_analysis')
+_logger = logging.getLogger('danalysis')
 
 def assert_log_raise(cond, error):
     if not cond:
@@ -37,7 +37,7 @@ def assert_square_singular(dmr, qr):
         not (square and
         u.dimensionless(qr) and
         np.linalg.det(dmr) != 0),
-        '(Reduced) dimensional matrix must be singular when q is dimensionless'\
-        'and number of variables equals number of dimensions.'\
+        'Dimensional matrix must be singular when q is dimensionless '\
+        'and number of variables equals number of dimensions. '\
         'See Theorem 7-5.'
     )

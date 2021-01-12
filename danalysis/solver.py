@@ -7,7 +7,7 @@ from . import sanity_checks as checks
 from .solver_info import solver_info
 from .solution import Solution
 
-_logger = logging.getLogger('dimensional_analysis')
+_logger = logging.getLogger('danalysis')
 
 # Applied Dimensional Analysis and Modeling, pp. 165
 
