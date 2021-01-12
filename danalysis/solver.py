@@ -50,7 +50,7 @@ def _matrix_Z(qr, info):
         e = np.zeros((N,M))
         e[:N, :N] = np.eye(N)
         e[:, -1] = np.zeros(N)
-        if N*M > 0:
+        if N > 1:
             e[0, -1] = 1
             e[1, -1] = 1
     
