@@ -64,7 +64,7 @@ def assert_dimensions(P, invars, q):
             si.unity) for exponents in P]
     assert_allclose(s, np.tile(np.asarray(q).reshape(1,-1), (P.shape[0],1)), atol=1e-4)
 
-def test_solve_issue1():
+def test_solve_e_has_zero_rows():
     r = slv.solve([si.M, si.F, si.T], si.L)
     assert_dimensions(r.P, [si.M, si.F, si.T], si.M**-1*si.F*si.T**2)
 
