@@ -1,4 +1,5 @@
 from . import utils as u
+from .quantities import _fmt_dimensions
 
 class Solution:
     def __init__(self, info, P):
@@ -16,7 +17,8 @@ class Solution:
         finaldim = Vcls(u.variable_product(self.info.variables, self.P[0]))
         m = f'Found {len(self.P)} variable products of dim. {finaldim}.\n'
         for i,p in enumerate(self.P):
-            ve = [f'{v}**{e}' for v,e 
-            in zip(self.info.variable_names, p) if e!=0]
-            m = m + f'{i}: {"*".join(ve)}\n'
+            # Here we reuse fmt_dimensions as computing the product of variables
+            # is the same as computing the derived dimension.
+            s = _fmt_dimensions(p, self.info.variable_names)
+            m = m + f'{i:4}: {s}\n'
         return m
