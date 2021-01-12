@@ -1,0 +1,40 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{cite}
+\usepackage{listings}
+
+\title{py-dimensional-analysis}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{py-dimensional-analysis}
+This Python package addresses physical dimensional analysis. In particular, \texttt{py-dimensional-analysis} calculates from a given system of (dimensional) variables those products that yield a desired target dimension.
+
+\begin{equation}
+    y = A^aB^bC_c
+\end{equation}
+
+\begin{lstlisting}[language=Python]
+def test_variable_product():        
+    v = u.variable_product([si.L,si.M,si.T], [2,1,2])
+    assert_allclose(v, [2,1,2])
+    v = u.variable_product([si.F,si.F], [1,-1])
+    assert_allclose(v, si.unity)
+\end{lstlisting}
+
+See \cite{szirtes2007applied}
+
+\subsection{References}
+\bibliographystyle{alpha}
+\begingroup
+\renewcommand{\section}[2]{}%
+%\renewcommand{\chapter}[2]{}% for other classes
+\bibliography{biblio.bib}
+\endgroup
+
+\end{document}
+
+%pandoc --citeproc -s README.tex -o README.md --to markdown_strict
