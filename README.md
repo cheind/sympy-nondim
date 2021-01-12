@@ -5,8 +5,9 @@ particular, `py-dimensional-analysis` calculates from a given system of
 (dimensional) variables those products that yield a desired target
 dimension.
 
-The following example illustrates, how variables corresponding to mass,
-force, time, and pressure have to relate to produce dimension length.
+The following example illustrates how the variables mass, force, time
+and pressure must relate to each other in order to produce the dimension
+length\*time.
 
 ``` python
 import danalysis as da
