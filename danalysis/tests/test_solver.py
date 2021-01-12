@@ -6,7 +6,7 @@ from numpy.testing import assert_allclose
 
 from .test_fixtures import *
 from .. quantities import Quantity
-from .. import si
+from .. import standard_units_min as si
 from .. import solver as slv
 from .. import utils as u
 

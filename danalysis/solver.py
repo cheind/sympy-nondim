@@ -13,16 +13,14 @@ _logger = logging.getLogger('dimensional_analysis')
 
 def _matrix_A(dm, info):
     '''Returns submatrix A of dimensional matrix'''
-    n_d = dm.shape[0]
-    A = dm[:, -n_d:]
-    assert A.shape == info.shape_A
+    N,M = info.shape_A
+    A = dm[:N, -M:]
     return A
 
 def _matrix_B(dm, info):
     '''Returns submatrix B of dimensional matrix'''
-    n_d = dm.shape[0]
-    B = dm[:, :dm.shape[1]-dm.shape[0]]   
-    assert B.shape == info.shape_B
+    N,M = info.shape_B
+    B = dm[:N, :M]   
     return B
 
 def _matrix_E(A, B, info):
@@ -84,7 +82,7 @@ def _row_removal_generator(dm, info, keep_rows=None):
         if n_keep > 0:
             return n_keep
         
-        n_zeros = zero_row_mask[r].sum()
+        n_zeros = zero_row_mask[list(r)].sum()
         if n_zeros > 0:
             return -n_zeros
 

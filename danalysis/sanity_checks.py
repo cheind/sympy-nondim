@@ -13,7 +13,7 @@ def assert_log_raise(cond, error):
 def assert_zero_q_when_all_zero_rows(dm, q):
     '''Check if all-zero dim-matrix rows correspond to zero entries in q.'''
     assert_log_raise(
-        all([q[i]!=0. for i in u.zero_rows(dm)]),
+        all([q[i]==0. for i in u.zero_rows(dm)]),
         'All-zero rows of dimensional matrix must correspond' \
         'to zero components in q.'
     )

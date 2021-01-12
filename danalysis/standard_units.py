@@ -1,9 +1,11 @@
 import numpy as np
 from .quantities import Quantity
 
-SIQuantity = Quantity.create_type('SIQuantity', 'LMT')
+SIQuantity = Quantity.create_type(
+    'SIQuantity', ['L','M','T','A','K','mol','cd']
+)
 
-L,M,T = SIQuantity.basevars()
+L,M,T,A,K,mol,cd = SIQuantity.basevars()
 unity = SIQuantity.unity()
 
 F = L*M/T**2

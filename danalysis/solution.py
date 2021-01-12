@@ -15,7 +15,7 @@ class Solution:
 
         Vcls = self.info.variables[0].__class__    
         finaldim = Vcls(u.variable_product(self.info.variables, self.P[0]))
-        m = f'Found {len(self.P)} variable products of dim. {finaldim}.\n'
+        m = f'Found {len(self.P)} variable products of dimension {finaldim}:\n'
         for i,p in enumerate(self.P):
             # Here we reuse fmt_dimensions as computing the product of variables
             # is the same as computing the derived dimension.

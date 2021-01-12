@@ -1,6 +1,7 @@
 import pytest
 
-from .. import si
+from .. import standard_units_min as si
+from ..quantities import Quantity
 
 @pytest.fixture
 def vs_example_72():

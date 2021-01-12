@@ -2,7 +2,7 @@ import pytest
 from .test_fixtures import *
 
 from ..solver_info import solver_info
-from .. import si
+from .. import standard_units_min as si
 
 @pytest.mark.usefixtures('vs_example_72')
 def test_matrix_solver_info(vs_example_72):

@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from ..quantities import Quantity
-from .. import si
+from .. import standard_units as si
 from .. import utils as u
 
 
@@ -53,20 +53,19 @@ def test_quantities_custom_type():
     assert str(r) == 'DimA**4*DimC**2'
 
 def test_si():
-    assert len(si.L) == 3
-
+    assert len(si.L) == 7
     assert str(si.L) == 'L'
     assert str(si.M) == 'M'    
-    assert str(si.T) == 'T'    
+    assert str(si.T) == 'T'
     assert str(si.F) == 'L*M*T**-2'
     assert str(si.pressure) == 'L**-1*M*T**-2'
     assert str(si.M/si.M) == '1'
     assert str(si.unity) == '1'
 
-    assert_allclose(si.L, [1,0,0])
-    assert_allclose(si.M, [0,1,0])
-    assert_allclose(si.T, [0,0,1])
-    assert_allclose(si.F, [1,1,-2])
+    assert_allclose(si.L, u.basis_vec(0,7))
+    assert_allclose(si.M, u.basis_vec(1,7))
+    assert_allclose(si.T, u.basis_vec(2,7))
+    assert_allclose(si.F, [1,1,-2,0,0,0,0])
 
     assert not si.F.dimensionless
     assert not si.L.dimensionless
