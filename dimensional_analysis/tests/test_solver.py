@@ -64,6 +64,11 @@ def assert_dimensions(P, invars, q):
             si.unity) for exponents in P]
     assert_allclose(s, np.tile(np.asarray(q).reshape(1,-1), (P.shape[0],1)), atol=1e-4)
 
+def test_solve_issue1():
+    r = slv.solve([si.M, si.F, si.T], si.L)
+    assert_dimensions(r.P, [si.M, si.F, si.T], si.M**-1*si.F*si.T**2)
+
+
 @pytest.mark.usefixtures('vs_example_72')
 def test_solve_72(vs_example_72):
     # No row deletion, no column swap

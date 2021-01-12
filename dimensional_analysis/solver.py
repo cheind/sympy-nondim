@@ -52,8 +52,9 @@ def _matrix_Z(qr, info):
         e = np.zeros((N,M))
         e[:N, :N] = np.eye(N)
         e[:, -1] = np.zeros(N)
-        e[0, -1] = 1
-        e[1, -1] = 1
+        if N*M > 0:
+            e[0, -1] = 1
+            e[1, -1] = 1
     
     N,M = info.shape_q
     Z = np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
