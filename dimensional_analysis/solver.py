@@ -57,30 +57,36 @@ def solver_info(dm, q):
     dimensionless = u.dimensionless(q)
     return SolverInfo(dm, dimensionless=dimensionless)
 
-def matrix_A(dm):
+def _matrix_A(dm, info):
     '''Returns submatrix A of dimensional matrix'''
     n_d = dm.shape[0]
     A = dm[:, -n_d:]
+    assert A.shape == info.shape_A
     return A
 
-def matrix_B(dm):
+def _matrix_B(dm, info):
     '''Returns submatrix B of dimensional matrix'''
     n_d = dm.shape[0]
-    B = dm[:, :dm.shape[1]-dm.shape[0]]
+    B = dm[:, :dm.shape[1]-dm.shape[0]]   
+    assert B.shape == info.shape_B
     return B
 
-def matrix_E(A, B, info):
+def _matrix_E(A, B, info):
     '''Return extended matrix E consisting of blocks of A and B.'''
     A = np.asarray(A)
     B = np.asarray(B)
     rank, n_v = info.rank, info.n_v    
     Ainv = np.linalg.inv(A)
-    return np.block([
+    E = np.block([
         [np.eye(n_v-rank), np.zeros((n_v-rank, rank))],
         [-Ainv@B, Ainv]
     ])
+    assert E.shape == (info.shape_E)    
+    return E
+    
 
-def matrix_Z(qr, info):
+
+def _matrix_Z(qr, info):
     N,M = info.shape_e
 
     if N==M:
@@ -98,10 +104,12 @@ def matrix_Z(qr, info):
         e[1, -1] = 1
     
     N,M = info.shape_q
-    return np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
+    Z = np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
+    assert Z.shape == (info.shape_Z)
+    return Z
 
 
-def row_removal_generator(dm, info, keep_rows=None):
+def _row_removal_generator(dm, info, keep_rows=None):
     if keep_rows is None:
         keep_rows = []
 
@@ -131,7 +139,7 @@ def row_removal_generator(dm, info, keep_rows=None):
 
     return iter(sorted(rowc, key=priority))
 
-def column_permutation_generator(info):
+def _column_permutation_generator(info):
     # Possible ways to swap columns. Specific elements of permutation
     # that represent no-op swaps (in terms of singularity of A) are
     # filtered below
@@ -149,7 +157,7 @@ def column_permutation_generator(info):
     yield from gen
 
 
-def ensure_nonsingular_A(dm, info, keep_rows=None):
+def _ensure_nonsingular_A(dm, info, keep_rows=None):
     '''Ensures that submatrix A of the dimensional matrix is nonsingular.
 
     Nonsingularity of A is required as the inverse of A is used to determine
@@ -178,17 +186,15 @@ def ensure_nonsingular_A(dm, info, keep_rows=None):
     ValueError
         If A could not be made nonsingular.
     '''
-    assert isinstance(info, SolverInfo)
-
-    row_gen = row_removal_generator(dm, info, keep_rows=keep_rows)
-    col_gen = column_permutation_generator(info)
+    row_gen = _row_removal_generator(dm, info, keep_rows=keep_rows)
+    col_gen = _column_permutation_generator(info)
 
     for idx, (row_ids, col_ids) in enumerate(it.product(row_gen, col_gen)):
         # Always delete all-zero rows as they represent dimensions
         # that are not represented in the variables.
         dmr, _ = u.remove_rows(dm, row_ids)
         dmr, _ = u.permute_columns(dmr, col_ids)        
-        if not np.isclose(np.linalg.det(matrix_A(dmr)), 0):
+        if not np.isclose(np.linalg.det(_matrix_A(dmr, info)), 0):
             _logger.debug(
                 f'Removing rows {row_ids}'\
                 f', new column order {col_ids}.'
@@ -213,7 +219,7 @@ def solve(dm, q=None, keep_rows=None):
     assert len(q) == dm.shape[0], 'Target dimensions has incorrect number of components'
 
     info = solver_info(dm, q)
-    drow_ids, col_perm = ensure_nonsingular_A(dm, info, keep_rows=keep_rows)
+    drow_ids, col_perm = _ensure_nonsingular_A(dm, info, keep_rows=keep_rows)
 
     checks.assert_zero_q_when_all_zero_rows(dm, q)
 
@@ -227,14 +233,12 @@ def solve(dm, q=None, keep_rows=None):
     checks.assert_square_singular(dmr_meta, qr)
 
     # Form E and Z
-    A, B = matrix_A(dmr), matrix_B(dmr)
-    E = matrix_E(A, B, info)
-    Z = matrix_Z(qr, info)
-    assert E.shape == (info.shape_E)    
-    assert Z.shape == (info.shape_Z)
-
-    # Form independent variable products
-    P = E @ Z
+    A, B = _matrix_A(dmr, info), _matrix_B(dmr, info)
+    E = _matrix_E(A, B, info)
+    Z = _matrix_Z(qr, info)
+    
+    # Form independent variable products (in columns)
+    P = E @ Z    
     # Fix column reorder and return transpose, i.e solutions in rows
     return P.T[:, inv_col_perm]
 
