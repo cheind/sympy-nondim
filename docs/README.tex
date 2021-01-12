@@ -13,19 +13,23 @@
 \section{py-dimensional-analysis}
 This Python package addresses physical dimensional analysis. In particular, \texttt{py-dimensional-analysis} calculates from a given system of (dimensional) variables those products that yield a desired target dimension.
 
-\begin{equation}
-    y = A^aB^bC_c
-\end{equation}
+% \begin{equation}
+%     y = A^aB^bC_c
+% \end{equation}
+
+The following example shows, a (single) relation between mass, force, and time produces length.
 
 \begin{lstlisting}[language=Python]
-def test_variable_product():        
-    v = u.variable_product([si.L,si.M,si.T], [2,1,2])
-    assert_allclose(v, [2,1,2])
-    v = u.variable_product([si.F,si.F], [1,-1])
-    assert_allclose(v, si.unity)
+import danalysis as da
+import danalysis.standard_units as si
+
+r = da.solve({'a':si.M, 'b':si.F, 'c':si.T}, si.L)
+print(r)
+#Found 1 variable products of dimension L:
+#   0: a**-1*b*c**2
 \end{lstlisting}
 
-See \cite{szirtes2007applied}
+This library is based on \cite{szirtes2007applied} but also incorporates ideas from \cite{santiago2019first, sonin2001dimensional}.
 
 \subsection{References}
 \bibliographystyle{alpha}
