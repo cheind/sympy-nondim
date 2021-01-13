@@ -4,7 +4,7 @@ import logging
 
 from . import utils as u
 from . import sanity_checks as checks
-from .solver_info import solver_info
+from . import solver_info as slvinfo
 from .solution import Solution
 
 _logger = logging.getLogger('danalysis')
@@ -158,10 +158,11 @@ def _ensure_nonsingular_A(dm, info, keep_rows=None):
         'All attempts to make it nonsingular failed.')
     raise ValueError('Matrix A singular')   
 
-def solve(variables, q=None, keep_rows=None):
-    info = solver_info(variables, q)
-    dm = info.dm
-    q = info.q
+def solve(dm, q, info=None, keep_rows=None):
+    if info is None:
+        info = slvinfo.solver_info(dm, q)
+    dm = np.atleast_2d(dm)
+    q = np.asarray(q)
 
     drow_ids, col_perm = _ensure_nonsingular_A(dm, info, keep_rows=keep_rows)
     checks.assert_zero_q_when_all_zero_rows(dm, q)  
@@ -189,6 +190,5 @@ def solve(variables, q=None, keep_rows=None):
     P = E @ Z    
     # Revert column reorder and return transpose so that
     # indep. variable products are in rows.
-    return Solution(info, P.T[:, inv_col_perm])
-
+    return P.T[:, inv_col_perm]
     

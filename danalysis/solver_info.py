@@ -3,36 +3,26 @@ import numpy as np
 from . import utils as u
 
 class SolverInfo:
-    def __init__(self, variables, q):
-        if isinstance(variables, dict):
-            self.variables = list(variables.values())
-            self.variable_names = list(variables.keys())
-        else:
-            self.variables = list(variables)
-            self.variable_names = string.ascii_lowercase[:len(self.variables)]
+    def __init__(self, dm, q):
+        dm = np.atleast_2d(dm)
+        q = np.asarray(q)
 
-        if len(variables) == 0:
-            raise ValueError('Need at least one variable to continue')
-        self.dm = u.dimensional_matrix(self.variables)
-
-        '''Target dimensions'''
-        self.q = None
-        if q is None:
-            self.q = np.zeros(self.dm.shape[0]) # unity, dimensionless products
-        else:
-            self.q = np.asarray(q)
-        if len(self.q) != self.dm.shape[0]:
-            raise ValueError('Target dimensionality does not match variable dimensionality')
-
+        if dm.size == 0:
+            raise ValueError('Need at least one variable/dimension.')
+        if len(q) != dm.shape[0]:
+            raise ValueError(
+                'Target dimensionality does not match ' \
+                'variable dimensionality')
+            
         '''Number of dimensions'''
-        self.n_d = self.dm.shape[0]
+        self.n_d = dm.shape[0]
         '''Number of variables'''
-        self.n_v = self.dm.shape[1]
+        self.n_v = dm.shape[1]
         '''Rank of dimensional matrix'''
-        self.rank = np.linalg.matrix_rank(self.dm)
+        self.rank = np.linalg.matrix_rank(dm)
         '''Number of possible independent variable products'''
         self.n_p = None
-        self.dimensionless = u.dimensionless(self.q)
+        self.dimensionless = u.dimensionless(q)
         if self.dimensionless:
             self.n_p = self.n_v - self.rank
         else:
@@ -53,16 +43,16 @@ class SolverInfo:
         self.shape_E = (self.n_v, self.n_v)
 
     @property
-    def square(self):
+    def square(self) -> bool:
         return self.n_d == self.n_v
 
     @property
-    def delta(self):
+    def delta(self) -> int:
         return self.n_d - self.rank
     
     @property
-    def singular(self):
+    def singular(self) -> bool:
         return not self.square or np.close(np.linalg.det(self.dm),0)
 
-def solver_info(variables, q):
-    return SolverInfo(variables, q)
+def solver_info(dm: np.ndarray, q: np.ndarray) -> SolverInfo:
+    return SolverInfo(dm, q)
