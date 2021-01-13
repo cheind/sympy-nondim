@@ -166,6 +166,10 @@ class DimensionalSystem:
             return self.base_quantities == other.base_quantities
         return False
 
+    @property
+    def unity(self):
+        return self()
+
 class Q:
     def __init__(self, dimsys: DimensionalSystem, exponents: Iterable[float]):
         e = np.asarray(exponents).astype(float)

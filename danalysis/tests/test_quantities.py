@@ -15,12 +15,12 @@ def test_quantities():
     assert len(d) == 3
     assert d.base_dims == ['A','B','C']    
 
-
     assert_allclose(d.q([0,0,1]), [0,0,1])
     assert_allclose(d.q(), [0,0,0])
     assert_allclose(d.q('B'), [0,1,0])
     assert_allclose(d([0,0,1]), [0,0,1])
     assert_allclose(d(), [0,0,0])
+    assert_allclose(d.unity, [0,0,0])
     assert_allclose(d('B'), [0,1,0])
     assert str(d.q([-1,0,2])) == 'A**-1*C**2'
     assert f'{d.q([-1,0,2])!r}' == 'Q(A**-1*C**2)'
