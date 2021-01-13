@@ -6,7 +6,7 @@ from ..quantities import DimensionalSystem, Q
 from .. import standard_units as si
 from .. import utils as u
 
-def test_quantities():
+def test_dimensional_system():
     d = DimensionalSystem(3)
     A,B,C = d.base_quantities()
     assert_allclose(A, [1,0,0])
@@ -33,6 +33,50 @@ def test_quantities():
     assert_allclose(qd, [2,-4,2])
     assert (qd/qd).is_dimensionless
 
+    # Dimensional system with named dims
+    lmt = DimensionalSystem('LMT')
+    L,M,T = lmt.base_quantities()
+    assert_allclose(L, [1,0,0])
+    assert_allclose(M, [0,1,0])
+    assert_allclose(T, [0,0,1])
+    assert lmt.base_dims == ['L','M','T']
+
+    # Dimensional system with named dims
+    ab = DimensionalSystem(['DimA', 'DimB'])
+    A,B = ab.base_quantities()
+    assert_allclose(A, [1,0])
+    assert_allclose(B, [0,1])
+    assert ab.base_dims == ['DimA','DimB']
+
+    assert not lmt == d
+    assert ab == DimensionalSystem(['DimA', 'DimB'])
+
+
+# def test_quantities_custom_type():
+#     Q = Quantity.create_type('Q', 'LMT')
+    
+#     # Derived quantity classes behave like ordinary quantities
+#     # but provide informative dimension names
+#     q = Q([1,2,1])    
+#     assert len(q) == 3
+#     assert str(q) == 'L*M**2*T'
+#     assert not q.dimensionless
+#     assert q.shape == (3,)  
+    
+#     qd = (q*[1,0,0]/[0,2,0])**2
+#     assert isinstance(qd, Q)
+#     assert_allclose(qd, [4,0,2])
+#     assert str(qd) == 'L**4*T**2'
+
+#     # Derived quantity classes initialize to unity when no exponents are given
+#     u = Q()
+#     assert u.dimensionless
+#     assert str(u) == '1'
+
+#     # Derived quantity types allow multi-character dimension names
+#     R = Quantity.create_type('R', ['DimA','DimB','DimC'])
+#     r = (R([1,2,1])*[1,0,0]/[0,2,0])**2
+#     assert str(r) == 'DimA**4*DimC**2'
 
 
 # def test_quantities_unknown_type():

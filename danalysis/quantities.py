@@ -163,7 +163,7 @@ class DimensionalSystem:
 
     def __eq__(self, other):
         if isinstance(other, DimensionalSystem):
-            return self.base_quantities == other.base_quantities
+            return self.base_dims == other.base_dims
         return False
 
     @property
