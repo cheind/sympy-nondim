@@ -1,6 +1,7 @@
+from __future__ import annotations 
 import numpy as np
 import string
-from collections.abc import Iterable
+from typing import Union, Iterable, Optional
 from . import utils as u
 
 def return_quantity(func):
@@ -128,3 +129,99 @@ class Quantity:
             {'__BASEDIMS__':basedims, '__init__':initializer}
         )
         return kls
+
+
+class DimensionalSystem:
+    def __init__(self, base_dims: Union[Iterable[str], int]):
+        if isinstance(base_dims, int):
+            base_dims = string.ascii_uppercase[:base_dims]
+        self.base_dims = list(base_dims)
+
+    def __len__(self) -> int:
+        return len(self.base_dims)
+
+    def q(self, exponents: Optional[Union[Iterable[float], str]]=None) -> Q:
+        if exponents is None:
+            return Q(self, np.zeros(len(self)))
+        elif isinstance(exponents, str):
+            return Q(
+                self, 
+                u.basis_vec(self.base_dims.index(exponents), len(self))
+            )
+        else:
+            return Q(self, exponents)
+
+    def base_quantities(self) -> Iterable[Q]:
+        for b in self.base_dims:
+            yield self.q(b)
+
+    def __call__(
+            self, 
+            exponents: Optional[Union[Iterable[float], str]]=None
+        ) -> Q:
+        return self.q(exponents)
+
+    def __eq__(self, other):
+        if isinstance(other, DimensionalSystem):
+            return self.base_quantities == other.base_quantities
+        return False
+
+class Q:
+    def __init__(self, dimsys: DimensionalSystem, exponents: Iterable[float]):
+        e = np.asarray(exponents).astype(float)
+        assert len(e) == len(dimsys)
+        self.e = e
+        self.dimsys = dimsys
+
+    def __repr__(self) -> str:
+        cls = self.__class__
+        return f'{cls.__name__}({str(self)})'   
+
+    def __str__(self) -> str:        
+        return _fmt_dimensions(self.e, self.dimsys.base_dims)
+
+    def __array__(self) -> Iterable[float]:
+        return self.e  
+
+    def __len__(self) -> int:
+        return self.e.shape[0]
+
+    def __iter__(self):
+        return iter(self.e)
+
+    def __getitem__(self, idx):
+        return self.e[idx]
+
+    def __eq__(self, other):
+        if isinstance(other, Q):
+            return (
+                len(self) == len(other) and
+                self.e == other.e and
+                self.dimsys == other.dimsys
+            )
+        return False
+    
+    def __pow__(self, exponent) -> Q:
+        return self.q(self.e*exponent)
+
+    def __mul__(self, other: Q) -> Q:
+        other = np.asarray(other)
+        return self.q(self.e + other)
+
+    def __rmul__(self, other: Q) -> Q:
+        return self.__mul__(other)
+
+    def __truediv__(self, other):    
+        other = np.asarray(other)
+        return self.q(self.e + (other*-1))
+
+    def __rtruediv__(self, other):    
+        return self.__truediv__(other)
+
+    def q(self, e: Optional[Union[Iterable[float], str]] = None) -> Q:
+        return self.dimsys.q(e)
+
+    @property
+    def is_dimensionless(self):
+        return np.allclose(self.e, 0.)
+        
