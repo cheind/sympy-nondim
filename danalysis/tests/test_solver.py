@@ -48,10 +48,45 @@ def test_ensure_nonsingular_A(dm_example_72, dm_example_78):
     assert len(del_row) == 1
     assert del_row[0] == 2
     assert col_order in [
-        (1,0,2),
-        (1,2,0),
-        (2,0,1),
-        (2,1,0)]
+        [1,0,2],
+        [1,2,0],
+        [2,0,1],
+        [2,1,0]]
+
+    # Test solver-options
+    dm = np.zeros((3,3))
+    dm[1,0] = 1
+    dm[0,1] = 1
+    dm[0,2] = 1
+    info = slv.solver_info(dm, [0.,0.,0.])
+    opts = slv.SolverOptions(
+        remove_row_ids=[2],
+        col_perm=[1,2,0]
+    )
+    del_row, col_order = slv._ensure_nonsingular_A(dm, info, opts)
+    assert len(del_row) == 1
+    assert del_row[0] == 2
+    assert col_order == [1,2,0]
+
+    opts = slv.SolverOptions(
+        remove_row_ids=[1],
+        col_perm=[1,2,0]
+    )
+    with pytest.raises(ValueError):
+        del_row, col_order = slv._ensure_nonsingular_A(dm, info, opts)
+
+    opts = slv.SolverOptions(
+        col_perm=[0,1,2]
+    )
+    with pytest.raises(ValueError):
+        del_row, col_order = slv._ensure_nonsingular_A(dm, info, opts)
+
+    opts = slv.SolverOptions(
+        col_perm=[1,2,1]
+    )
+    with pytest.raises(ValueError):
+        del_row, col_order = slv._ensure_nonsingular_A(dm, info, opts)
+
 
 def test_solve_e_has_zero_rows():
     # Number of solutions is 1 which makes e zero rows (no variables to choose freely).

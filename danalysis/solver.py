@@ -183,13 +183,13 @@ def _remove_rows(dm, info, opts):
                 ),
                 critical=True
             )
-        return r
+        return list(r)
 
     row_gen = _row_removal_generator(dm, info)    
     for r in row_gen:
         m, _ = u.remove_rows(dm, r)
         if equal_ranks(m):
-            return r
+            return list(r)
     
     # Should not happen
     checks._fail('Failed remove dimensional matrix rows.', critical=True)
@@ -198,11 +198,26 @@ def _permute_cols(dmr, info, opts):
     def notsingular(dmr):
         return not np.isclose(np.linalg.det(_matrix_A(dmr, info)), 0)
 
+    if opts.col_perm is not None:
+        c = list(opts.col_perm)
+        if len(c) != info.n_v or len(set(c) & set(range(info.n_v))) != info.n_v:
+            checks._fail(
+                f'Not a valid column permutation {c}',
+                critical=True
+            )
+        m, _ = u.permute_columns(dmr, c)
+        if not notsingular(m):
+            checks._fail(
+                f'Preferred column permution yields singular A matrix.',
+                critical=True
+            )
+        return c
+
     col_gen = _column_permutation_generator(info)
     for c in col_gen:
         m, _ = u.permute_columns(dmr, c)
         if notsingular(m):
-            return c
+            return list(c)
 
     # Should not happen
     checks._fail('Failed to find nonsingular matrix A.', critical=True)
