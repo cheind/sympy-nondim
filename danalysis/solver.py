@@ -4,12 +4,64 @@ import logging
 
 from . import utils as u
 from . import sanity_checks as checks
-from . import solver_info as slvinfo
 from .solution import Solution
 
 _logger = logging.getLogger('danalysis')
 
-# Applied Dimensional Analysis and Modeling, pp. 165
+class SolverInfo:
+    def __init__(self, dm, q):
+        dm = np.atleast_2d(dm)
+        q = np.asarray(q)
+
+        if dm.size == 0:
+            raise ValueError('Need at least one variable/dimension.')
+        if len(q) != dm.shape[0]:
+            raise ValueError(
+                'Target dimensionality does not match ' \
+                'variable dimensionality')
+            
+        '''Number of dimensions'''
+        self.n_d = dm.shape[0]
+        '''Number of variables'''
+        self.n_v = dm.shape[1]
+        '''Rank of dimensional matrix'''
+        self.rank = np.linalg.matrix_rank(dm)
+        '''Number of possible independent variable products'''
+        self.n_p = None
+        self.dimensionless = u.dimensionless(q)
+        if self.dimensionless:
+            self.n_p = self.n_v - self.rank
+        else:
+            self.n_p = self.n_v - self.rank + 1
+        '''Number of selectable components (i.e rows/dimensions)'''
+        self.n_s = self.rank
+        '''Shape of nonsingular matrix A'''
+        self.shape_A = (self.rank, self.rank)
+        '''Shape of matrix B to the left of A'''
+        self.shape_B = (self.rank, self.n_v - self.rank)
+        '''Shape of matrix e containing the freely selectable exponents.'''
+        self.shape_e = (self.n_v - self.rank, self.n_p)
+        '''Shape of the matrix q that repeats the selectable dimensions of input `q` accross cols'''
+        self.shape_q = (self.rank, self.n_p)
+        '''Shape of matrix Z which represents (e,q) stacked along rows.'''
+        self.shape_Z = (self.n_v, self.n_p)
+        '''Shape of matrix E which contains blocks of I,0,A,B'''
+        self.shape_E = (self.n_v, self.n_v)
+
+    @property
+    def square(self) -> bool:
+        return self.n_d == self.n_v
+
+    @property
+    def delta(self) -> int:
+        return self.n_d - self.rank
+    
+    @property
+    def singular(self) -> bool:
+        return not self.square or np.close(np.linalg.det(self.dm),0)
+
+def solver_info(dm: np.ndarray, q: np.ndarray) -> SolverInfo:
+    return SolverInfo(dm, q)
 
 def _matrix_A(dm, info):
     '''Returns submatrix A of dimensional matrix'''
@@ -54,6 +106,7 @@ def _matrix_Z(qr, info):
             e[0, -1] = 1
             e[1, -1] = 1
     
+
     N,M = info.shape_q
     Z = np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
     assert Z.shape == (info.shape_Z)
@@ -158,9 +211,9 @@ def _ensure_nonsingular_A(dm, info, keep_rows=None):
         'All attempts to make it nonsingular failed.')
     raise ValueError('Matrix A singular')   
 
-def solve(dm, q, info=None, keep_rows=None):
+def solve(dm, q, info=None, keep_rows=None, strict=True):
     if info is None:
-        info = slvinfo.solver_info(dm, q)
+        info = solver_info(dm, q)
     dm = np.atleast_2d(dm)
     q = np.asarray(q)
 
@@ -168,9 +221,9 @@ def solve(dm, q, info=None, keep_rows=None):
     checks.assert_zero_q_when_all_zero_rows(dm, q)  
     if info.n_s < info.n_d:
         _logger.info((
-            f'Number of selectable components is less than number dimensions. '
-            f'Values of non-selectable components {drow_ids} are computed '
-            f'may differ from values in q, which may be unexpected.'
+            f'Number of selectable dimensions (rows) is less than number '
+            f'dimensions. Values of non-selectable dimensions {drow_ids} '
+            f'are computed may differ target dimensionality.'
         ))
 
     dmr, orow_ids = u.remove_rows(dm, drow_ids)
@@ -190,5 +243,10 @@ def solve(dm, q, info=None, keep_rows=None):
     P = E @ Z    
     # Revert column reorder and return transpose so that
     # indep. variable products are in rows.
-    return P.T[:, inv_col_perm]
+    PT = P.T[:, inv_col_perm]
+
+    # Check result dimension. 
+    checks.result_dimension_match(PT, dm, q, strict)
+    
+    return PT
     

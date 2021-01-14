@@ -67,6 +67,21 @@ def test_solve_e_has_zero_rows():
     assert P.shape == (1,3)
     assert_allclose(P @ dm.T, [[1.,0, 0]]) # PxD
 
+def test_solve_wrong_result_dims():
+    dm = np.array([
+        [1.,1,0],
+        [0,0,0],
+        [0,0,0]
+    ]) 
+    # rank two, but A 2x2 will always be singular
+    # if no column swap happens
+    P = slv.solve(dm, [0,0,0.], strict=False)
+    print(P)
+    # assert P.shape == (1,3)
+    # assert_allclose(P @ dm.T, [[1.,0, 0]]) # PxD
+
+
+
 @pytest.mark.usefixtures('dm_example_72')
 def test_solve_72(dm_example_72):
     # No row deletion, no column swap
