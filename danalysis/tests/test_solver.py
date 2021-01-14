@@ -99,7 +99,8 @@ def test_solve_e_has_zero_rows():
     assert P.shape == (1,3)
     assert_allclose(P @ dm.T, [[1.,0, 0]]) # PxD
 
-def test_solve_wrong_result_dims():
+def test_solve_with_e():
+
     dm = np.array([
         [1.,1,0],
         [0,0,0],
@@ -109,8 +110,6 @@ def test_solve_wrong_result_dims():
     # if no column swap happens
     P = slv.solve(dm, [0,0,0.], strict=False)
     print(P)
-    # assert P.shape == (1,3)
-    # assert_allclose(P @ dm.T, [[1.,0, 0]]) # PxD
 
 
 
@@ -120,6 +119,17 @@ def test_solve_72(dm_example_72):
     P = slv.solve(dm_example_72, [3., 5., 7.])
     assert P.shape == (3,5)
     assert_allclose(P @ dm_example_72.T, np.tile([[3.,5.,7.]], (3,1))) # PxD
+
+@pytest.mark.usefixtures('dm_example_72')
+def test_solve_72_with_e(dm_example_72):
+    # Explicitly specify matrix-e using the values from pp. 138
+    opts = slv.SolverOptions(col_perm=range(5), e=np.array([[1, 0],[2, 0]]))
+    P = slv.solve(dm_example_72, [3., 5., 7.], opts=opts)
+    assert P.shape == (2,5)
+    assert_allclose(P, [
+        [1., 2, -1.8, 0.6, 0.2],
+        [0,  0, 37/15., 6/15., -18/15.] 
+    ])
         
 @pytest.mark.usefixtures('dm_example_78')
 def test_solve_78(dm_example_78):

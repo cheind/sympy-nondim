@@ -56,6 +56,14 @@ class SolverInfo:
     @property
     def delta(self) -> int:
         return self.n_d - self.rank
+
+    @property
+    def n_free_variables(self) -> int:
+        return self.n_v - self.rank
+
+    @property
+    def n_excess_rows(self) -> int:
+        return self.delta
     
     @property
     def singular(self) -> bool:
@@ -68,6 +76,7 @@ def solver_info(dm: np.ndarray, q: np.ndarray) -> SolverInfo:
 class SolverOptions:
     remove_row_ids: Optional[List[int]] = None
     col_perm: Optional[List[int]] = None
+    e: np.ndarray = None
 
 
 def _matrix_A(dm, info):
@@ -95,10 +104,17 @@ def _matrix_E(A, B, info):
     assert E.shape == (info.shape_E)    
     return E
 
-def _matrix_Z(qr, info):
+def _matrix_Z(qr, info, opts):
     N,M = info.shape_e
 
-    if N==M:
+    if opts.e is not None:
+        e = np.asarray(opts.e)
+        if e.shape[0] != N:
+            checks._fail(
+                f'e-matrix needs to have {N} rows.',
+                critical=True
+            )
+    elif N==M:
         # Square e happens when dimensionless q is used, since then
         # N_V - Rdm (rows) = N_p (cols)
         e = np.eye(N)
@@ -114,10 +130,10 @@ def _matrix_Z(qr, info):
             e[1, -1] = 1
     
 
-    N,M = info.shape_q
-    Z = np.block([[e],[np.tile(qr.reshape(-1,1), (1,M))]])
-    assert Z.shape == (info.shape_Z)
-    return Z
+    return np.block([
+        [e],
+        [np.tile(qr.reshape(-1,1), (1,e.shape[1]))]
+    ])
 
 
 def _row_removal_generator(dm, info):
@@ -288,7 +304,7 @@ def solve(dm, q, info=None, opts=None, strict=True):
     # Form E and Z
     A, B = _matrix_A(dmr, info), _matrix_B(dmr, info)
     E = _matrix_E(A, B, info)
-    Z = _matrix_Z(qr, info)
+    Z = _matrix_Z(qr, info, opts)
     
     # Form independent variable products (in columns)
     P = E @ Z    
