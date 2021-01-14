@@ -6,7 +6,6 @@ import copy
 
 from .quantities import DimensionalSystem, Q, _fmt_dimensions
 from . import utils as u
-from . import solver_info as slvinfo
 from . import solver as slv
 
 _logger = logging.getLogger('danalysis')
@@ -14,7 +13,7 @@ _logger = logging.getLogger('danalysis')
 class Result:
     def __init__(
         self, 
-        info: slvinfo.SolverInfo, 
+        info: slv.SolverInfo, 
         dimsys: DimensionalSystem,
         P: np.ndarray, 
         vs: OrderedDict
@@ -64,7 +63,7 @@ class Problem:
     def __setattr__(self, name: str, value: Union[Q, Any]) -> None:
         variables = self.variables
         if isinstance(value, Q):
-            _logger.debug('Recording variable {name}:{value!r}')
+            _logger.debug(f'Recording variable [{name}] = {value!r}')
             variables[name] = value
         super().__setattr__(name, value)
 
@@ -74,7 +73,7 @@ class Problem:
 
     def solve_for(self, q: Q, **kwargs: dict) -> Result:
         dm = u.dimensional_matrix(self.variables.values())
-        info = slvinfo.solver_info(dm, q)
+        info = slv.solver_info(dm, q)
         P = slv.solve(dm, q, info=info, **kwargs)
         return Result(info, q.dimsys, P, copy.deepcopy(self.variables))
 
