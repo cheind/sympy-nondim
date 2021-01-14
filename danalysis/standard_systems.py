@@ -8,7 +8,7 @@ def _add_LMT_derived_quantities(dimsys: DimensionalSystem) -> None:
     dimsys.Pressure = dimsys.F/L**2
     dimsys.Density = M/L**3
     dimsys.Torque = L**2*M*T**-2
-    dimsys.Viscosity = M*(L*T)**-1
+    dimsys.DynamicViscosity = M*(L*T)**-1
     dimsys.Angle = dimsys.Unity
 
 """International System of Units (SI)"""
