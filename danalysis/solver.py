@@ -1,10 +1,11 @@
 import numpy as np
 import itertools as it
+from typing import Optional, List
+from dataclasses import dataclass
 import logging
 
 from . import utils as u
 from . import sanity_checks as checks
-from .solution import Solution
 
 _logger = logging.getLogger('danalysis')
 
@@ -63,6 +64,12 @@ class SolverInfo:
 def solver_info(dm: np.ndarray, q: np.ndarray) -> SolverInfo:
     return SolverInfo(dm, q)
 
+@dataclass
+class SolverOptions:
+    remove_row_ids: Optional[List[int]] = None
+    col_perm: Optional[List[int]] = None
+
+
 def _matrix_A(dm, info):
     '''Returns submatrix A of dimensional matrix'''
     N,M = info.shape_A
@@ -113,15 +120,7 @@ def _matrix_Z(qr, info):
     return Z
 
 
-def _row_removal_generator(dm, info, keep_rows=None):
-    if keep_rows is None:
-        keep_rows = []
-
-    zero_row_mask = np.all(np.isclose(dm, 0), -1)
-    zero_row_ids = np.where(zero_row_mask)[0]
-    n_z = len(zero_row_ids)
-    keep_set = set(keep_rows)
-
+def _row_removal_generator(dm, info):
     # Possible ways to remove rows to adjust for rank deficit 
     # (excluding zero rows). We also do not include any row i 
     # for which q_i != 0
@@ -129,16 +128,12 @@ def _row_removal_generator(dm, info, keep_rows=None):
         range(info.n_d),
         r=info.delta
     )
-    
+
+    zero_row_mask = np.all(np.isclose(dm, 0), -1)    
     def priority(r):
-        n_keep = len(set(r) & keep_set)
-        if n_keep > 0:
-            return n_keep
-        
         n_zeros = zero_row_mask[list(r)].sum()
         if n_zeros > 0:
             return -n_zeros
-
         return 0
 
     return iter(sorted(rowc, key=priority))
@@ -160,11 +155,37 @@ def _column_permutation_generator(info):
     gen = (p for i,p in enumerate(colp) if effective_permutation(i,p))
     yield from gen
 
-def _remove_rows(dm, info, keep_rows=None):
+def _remove_rows(dm, info, opts):
     def equal_ranks(dmr):
         return np.linalg.matrix_rank(dmr) == info.rank
 
-    row_gen = _row_removal_generator(dm, info, keep_rows=keep_rows)    
+    if opts.remove_row_ids is not None:
+        r = np.asarray(opts.remove_row_ids)
+        if len(r) != info.delta:
+            checks._fail(
+                (
+                    f'Number of rows to delete {len(r)} does not '
+                    f'match number of required rows {info.delta}.'
+                ),
+                critical=True
+            )
+        if np.any(r < 0 or r > info.n_d-1):
+            checks._fail(
+                f'Row indices out of bounds.',
+                critical=True
+            )
+        m, _ = u.remove_rows(dm, r)
+        if not equal_ranks(m):
+            checks._fail(
+                (
+                    f'Preferred row deletion failed, because it leads '
+                    f'to a rank < original rank.'
+                ),
+                critical=True
+            )
+        return r
+
+    row_gen = _row_removal_generator(dm, info)    
     for r in row_gen:
         m, _ = u.remove_rows(dm, r)
         if equal_ranks(m):
@@ -173,7 +194,7 @@ def _remove_rows(dm, info, keep_rows=None):
     # Should not happen
     checks._fail('Failed remove dimensional matrix rows.', critical=True)
 
-def _permute_cols(dmr, info):
+def _permute_cols(dmr, info, opts):
     def notsingular(dmr):
         return not np.isclose(np.linalg.det(_matrix_A(dmr, info)), 0)
 
@@ -186,7 +207,7 @@ def _permute_cols(dmr, info):
     # Should not happen
     checks._fail('Failed to find nonsingular matrix A.', critical=True)
 
-def _ensure_nonsingular_A(dm, info, keep_rows=None):
+def _ensure_nonsingular_A(dm, info, opts):
     '''Ensures that submatrix A of the dimensional matrix is nonsingular.
 
     Nonsingularity of A is required as the inverse of A is used to determine
@@ -199,9 +220,8 @@ def _ensure_nonsingular_A(dm, info, keep_rows=None):
         Dimensional matrix (DxV) as returned by `dimensional_matrix`. 
     info : SolverInfo
         Meta information about the system to solve for.
-    keep_rows : array-like, optional
-        Component (i.e row) indices that should not be removed if
-        possible to make A nonsingular.
+    opts : SolverOptions
+        Advanced solver options
 
     Returns
     -------
@@ -216,22 +236,24 @@ def _ensure_nonsingular_A(dm, info, keep_rows=None):
         If A could not be made nonsingular.
     '''
 
-    row_ids = _remove_rows(dm, info, keep_rows=keep_rows)
+    row_ids = _remove_rows(dm, info, opts)
     dmr, _ = u.remove_rows(dm, row_ids)
-    col_perm = _permute_cols(dmr, info)
-    _logger.debug(
+    col_perm = _permute_cols(dmr, info, opts)
+    _logger.debug((
         f'Removing rows {row_ids}'
         f', new column order {col_perm}.'
-    )
+    ))
     return (row_ids, col_perm)
 
-def solve(dm, q, info=None, keep_rows=None, strict=True):
+def solve(dm, q, info=None, opts=None, strict=True):
     if info is None:
         info = solver_info(dm, q)
+    if opts is None:
+        opts = SolverOptions()
     dm = np.atleast_2d(dm)
     q = np.asarray(q)
 
-    drow_ids, col_perm = _ensure_nonsingular_A(dm, info, keep_rows=keep_rows)
+    drow_ids, col_perm = _ensure_nonsingular_A(dm, info, opts)
     checks.assert_zero_q_when_all_zero_rows(dm, q)  
     if info.n_s < info.n_d:
         _logger.info((
