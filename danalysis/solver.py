@@ -160,6 +160,31 @@ def _column_permutation_generator(info):
     gen = (p for i,p in enumerate(colp) if effective_permutation(i,p))
     yield from gen
 
+def _remove_rows(dm, info, keep_rows=None):
+    def equal_ranks(dmr):
+        return np.linalg.matrix_rank(dmr) == info.rank
+
+    row_gen = _row_removal_generator(dm, info, keep_rows=keep_rows)    
+    for r in row_gen:
+        m, _ = u.remove_rows(dm, r)
+        if equal_ranks(m):
+            return r
+    
+    # Should not happen
+    checks._fail('Failed remove dimensional matrix rows.', critical=True)
+
+def _permute_cols(dmr, info):
+    def notsingular(dmr):
+        return not np.isclose(np.linalg.det(_matrix_A(dmr, info)), 0)
+
+    col_gen = _column_permutation_generator(info)
+    for c in col_gen:
+        m, _ = u.permute_columns(dmr, c)
+        if notsingular(m):
+            return c
+
+    # Should not happen
+    checks._fail('Failed to find nonsingular matrix A.', critical=True)
 
 def _ensure_nonsingular_A(dm, info, keep_rows=None):
     '''Ensures that submatrix A of the dimensional matrix is nonsingular.
@@ -190,26 +215,15 @@ def _ensure_nonsingular_A(dm, info, keep_rows=None):
     ValueError
         If A could not be made nonsingular.
     '''
-    row_gen = _row_removal_generator(dm, info, keep_rows=keep_rows)
-    col_gen = _column_permutation_generator(info)
 
-    for idx, (row_ids, col_ids) in enumerate(it.product(row_gen, col_gen)):
-        # Always delete all-zero rows as they represent dimensions
-        # that are not represented in the variables.
-        dmr, _ = u.remove_rows(dm, row_ids)
-        dmr, _ = u.permute_columns(dmr, col_ids)        
-        if not np.isclose(np.linalg.det(_matrix_A(dmr, info)), 0):
-            _logger.debug(
-                f'Removing rows {row_ids}'\
-                f', new column order {col_ids}.'
-            )
-            return (row_ids, col_ids)
-
-    # Failed
-    _logger.error( 
-        'Matrix A is singular.' \
-        'All attempts to make it nonsingular failed.')
-    raise ValueError('Matrix A singular')   
+    row_ids = _remove_rows(dm, info, keep_rows=keep_rows)
+    dmr, _ = u.remove_rows(dm, row_ids)
+    col_perm = _permute_cols(dmr, info)
+    _logger.debug(
+        f'Removing rows {row_ids}'
+        f', new column order {col_perm}.'
+    )
+    return (row_ids, col_perm)
 
 def solve(dm, q, info=None, keep_rows=None, strict=True):
     if info is None:
