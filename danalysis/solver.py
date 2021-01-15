@@ -10,6 +10,8 @@ import numpy as np
 from . import utils as u
 from . import sanity_checks as checks
 from . import meta
+from . import linalg
+from . import quantities as qt
 
 _logger = logging.getLogger('danalysis')
 
@@ -19,204 +21,6 @@ class SolverOptions:
     col_perm: Optional[List[int]] = None
     e: np.ndarray = None
 
-
-def _matrix_A(dm, info):
-    '''Returns submatrix A of dimensional matrix'''
-    N,M = info.shape_A
-    A = dm[:N, -M:]
-    return A
-
-def _matrix_B(dm, info):
-    '''Returns submatrix B of dimensional matrix'''
-    N,M = info.shape_B
-    B = dm[:N, :M]   
-    return B
-
-def _matrix_E(A, B, info):
-    '''Return extended matrix E consisting of blocks of A and B.'''
-    A = np.asarray(A)
-    B = np.asarray(B)
-    rank, n_v = info.rank, info.n_v    
-    Ainv = np.linalg.inv(A)
-    E = np.block([
-        [np.eye(n_v-rank), np.zeros((n_v-rank, rank))],
-        [-Ainv@B, Ainv]
-    ])
-    assert E.shape == (info.shape_E)    
-    return E
-
-def _matrix_Z(qr, info, opts):
-    N,M = info.shape_e
-
-    if opts.e is not None:
-        e = np.asarray(opts.e)
-        if e.shape[0] != N:
-            checks._fail(
-                f'e-matrix needs to have {N} rows.',
-                critical=True
-            )
-    elif N==M:
-        # Square e happens when dimensionless q is used, since then
-        # N_V - Rdm (rows) = N_p (cols)
-        e = np.eye(N)
-    else:
-        # Non-square N_V - Rdm + 1 (rows) = N_p (cols)
-        # Ensure that columns are independet. We freely set the
-        # last column to be [1,1,0...]
-        e = np.zeros((N,M))
-        e[:N, :N] = np.eye(N)
-        e[:, -1] = np.zeros(N)
-        if N > 1:
-            e[0, -1] = 1
-            e[1, -1] = 1
-    
-
-    return np.block([
-        [e],
-        [np.tile(qr.reshape(-1,1), (1,e.shape[1]))]
-    ])
-
-
-def _row_removal_generator(dm, info):
-    # Possible ways to remove rows to adjust for rank deficit 
-    # (excluding zero rows). We also do not include any row i 
-    # for which q_i != 0
-    rowc = it.combinations(
-        range(info.n_d),
-        r=info.delta
-    )
-
-    zero_row_mask = np.all(np.isclose(dm, 0), -1)    
-    def priority(r):
-        n_zeros = zero_row_mask[list(r)].sum()
-        if n_zeros > 0:
-            return -n_zeros
-        return 0
-
-    return iter(sorted(rowc, key=priority))
-
-def _column_permutation_generator(info):
-    # Possible ways to swap columns. Specific elements of permutation
-    # that represent no-op swaps (in terms of singularity of A) are
-    # filtered below
-    cols_of_A = set(range(info.n_v-info.shape_A[0],info.n_v))
-    colp = it.permutations(range(info.n_v))
-    
-    def effective_permutation(i,p):
-        # Determine if this permutation is actually bringing a new 
-        # column to A. i==0 is also allowed as it represented the
-        # identity transform which we need to test anyways.
-        # TODO consider Theorem 9-8 for a speed-up.
-        s = set(p[info.shape_A[1]:])
-        return i == 0 or len(cols_of_A ^ s) > 0
-    gen = (p for i,p in enumerate(colp) if effective_permutation(i,p))
-    yield from gen
-
-def _remove_rows(dm, info, opts):
-    def equal_ranks(dmr):
-        return np.linalg.matrix_rank(dmr) == info.rank
-
-    if opts.remove_row_ids is not None:
-        r = np.asarray(opts.remove_row_ids)
-        if len(r) != info.delta:
-            checks._fail(
-                (
-                    f'Number of rows to delete {len(r)} does not '
-                    f'match number of required rows {info.delta}.'
-                ),
-                critical=True
-            )
-        if np.any(r < 0 or r > info.n_d-1):
-            checks._fail(
-                f'Row indices out of bounds.',
-                critical=True
-            )
-        m, _ = u.remove_rows(dm, r)
-        if not equal_ranks(m):
-            checks._fail(
-                (
-                    f'Preferred row deletion failed, because it leads '
-                    f'to a rank < original rank.'
-                ),
-                critical=True
-            )
-        return list(r)
-
-    row_gen = _row_removal_generator(dm, info)    
-    for r in row_gen:
-        m, _ = u.remove_rows(dm, r)
-        if equal_ranks(m):
-            return list(r)
-    
-    # Should not happen
-    checks._fail('Failed remove dimensional matrix rows.', critical=True)
-
-def _permute_cols(dmr, info, opts):
-    def notsingular(dmr):
-        return not np.isclose(np.linalg.det(_matrix_A(dmr, info)), 0)
-
-    if opts.col_perm is not None:
-        c = list(opts.col_perm)
-        if len(c) != info.n_v or len(set(c) & set(range(info.n_v))) != info.n_v:
-            checks._fail(
-                f'Not a valid column permutation {c}',
-                critical=True
-            )
-        m, _ = u.permute_columns(dmr, c)
-        if not notsingular(m):
-            checks._fail(
-                f'Preferred column permution yields singular A matrix.',
-                critical=True
-            )
-        return c
-
-    col_gen = _column_permutation_generator(info)
-    for c in col_gen:
-        m, _ = u.permute_columns(dmr, c)
-        if notsingular(m):
-            return list(c)
-
-    # Should not happen
-    checks._fail('Failed to find nonsingular matrix A.', critical=True)
-
-def _ensure_nonsingular_A(dm, info, opts):
-    '''Ensures that submatrix A of the dimensional matrix is nonsingular.
-
-    Nonsingularity of A is required as the inverse of A is used to determine
-    exponent coefficients of the solution. The method implemented is aligned
-    with "Applied Dimensional Analysis and Modeling" pp. 144-147.
-
-    Params
-    ------
-    dm : DxV array
-        Dimensional matrix (DxV) as returned by `dimensional_matrix`. 
-    info : LinearSystemInfo
-        Meta information about the system to solve for.
-    opts : SolverOptions
-        Advanced solver options
-
-    Returns
-    -------
-    row_ids: array-like
-        Row indices to drop
-    col_perm: array-like
-        Column permutation
-
-    Raises
-    ------
-    ValueError
-        If A could not be made nonsingular.
-    '''
-
-    row_ids = _remove_rows(dm, info, opts)
-    dmr, _ = u.remove_rows(dm, row_ids)
-    col_perm = _permute_cols(dmr, info, opts)
-    _logger.debug((
-        f'Removing rows {row_ids}'
-        f', new column order {col_perm}.'
-    ))
-    return (row_ids, col_perm)
-
 def solve(dm, q, info=None, opts=None, strict=True):
     if info is None:
         info = meta.info(dm, q)
@@ -225,7 +29,7 @@ def solve(dm, q, info=None, opts=None, strict=True):
     dm = np.atleast_2d(dm)
     q = np.asarray(q)
 
-    drow_ids, col_perm = _ensure_nonsingular_A(dm, info, opts)
+    drow_ids, col_perm = linalg.ensure_nonsingular_A(dm, info, remove_row_ids=opts.remove_row_ids, col_perm=opts.col_perm)
     checks.assert_zero_q_when_all_zero_rows(dm, q)  
     if info.n_s < info.n_d:
         _logger.info((
@@ -243,9 +47,9 @@ def solve(dm, q, info=None, opts=None, strict=True):
     checks.assert_square_singular(dmr, qr)
 
     # Form E and Z
-    A, B = _matrix_A(dmr, info), _matrix_B(dmr, info)
-    E = _matrix_E(A, B, info)
-    Z = _matrix_Z(qr, info, opts)
+    A, B = linalg.matrix_A(dmr, info), linalg.matrix_B(dmr, info)
+    E = linalg.matrix_E(A, B, info)
+    Z = linalg.matrix_Z(qr, info, e=opts.e)
     
     # Form independent variable products (in columns)
     P = E @ Z    
@@ -258,32 +62,22 @@ def solve(dm, q, info=None, opts=None, strict=True):
     
     return PT
 
-from .quantities import DimensionalSystem, Q, _fmt_dimensions
 
+@dataclass
 class Result:
-    def __init__(
-        self, 
-        info: meta.LinearSystemMeta, 
-        dimsys: DimensionalSystem,
-        P: np.ndarray, 
-        vs: Dict[str, Q]
-    ):
-        self.info = info
-        self.dimsys = dimsys
-        self.P = P
-        self.variables = vs
-
-    def __repr__(self):
-        return f'Result<{self.P}>'
+    info: meta.LinearSystemMeta
+    dimsys: qt.DimensionalSystem
+    P: np.ndarray
+    variables: Dict[str, qt.Q]
 
     @property
-    def result_q(self) -> Q:
+    def result_q(self) -> qt.Q:
         '''Dimension of each variable product.'''
         qs = self.variables.values()
         fd = u.variable_product(qs, self.P[0])
         return self.dimsys.q(fd)
 
-    def __str__(self):        
+    def __str__(self) -> str:        
         if len(self.P) == 0:
             return 'Found 0 solutions.'        
 
@@ -300,19 +94,17 @@ class Result:
         for i,p in enumerate(self.P):
             # Here we reuse fmt_dimensions as computing the product of variables
             # is the same as computing the derived dimension.
-            s = _fmt_dimensions(p, names)
+            s = qt._fmt_dimensions(p, names)
             m = m + f'\t{i+1}: [{s}] = {finaldim}\n'
         return m
 
-
-
 class Solver:
-    variables: Dict[str, Q]
-    q: Q
+    variables: Dict[str, qt.Q]
+    q: qt.Q
     dm: np.ndarray
     info: meta.LinearSystemMeta
 
-    def __init__(self, variables: Union[Mapping[str, Q], Iterable[Q]], q: Q):
+    def __init__(self, variables: Union[Mapping[str, qt.Q], Iterable[qt.Q]], q: qt.Q):
         if isinstance(variables, abc.Mapping):
             variables = dict(variables)
         elif isinstance(variables, abc.Iterable):
@@ -320,8 +112,8 @@ class Solver:
         else:
             raise ValueError('Variables needs to be mapping or sequence.')
 
-        if (not all([isinstance(v, Q) for v in variables.values()]) or 
-                not isinstance(q, Q)):
+        if (not all([isinstance(v, qt.Q) for v in variables.values()]) or 
+                not isinstance(q, qt.Q)):
             raise ValueError('Variables and q need to be Q types.')
             
         self.variables = variables
