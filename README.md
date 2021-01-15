@@ -22,17 +22,19 @@ s = da.Solver(
     },
     si.L*si.T                       # target dimension
 )
-print(s.solve())
-    # Found 2 variable products of variables
-    # {
-    #         a:Q(M),
-    #         b:Q(L*M*T**-2),
-    #         c:Q(T),
-    #         d:Q(L**-1*M*T**-2)
-    # }, each of dimension L*T:
-    #         1: [a*c**-1*d**-1] = L*T
-    #         2: [b**0.5*c*d**-0.5] = L*T
 ```
+
+Which prints
+
+    Found 2 variable products of variables
+    {
+            a:Q(M),
+            b:Q(L*M*T**-2),
+            c:Q(T),
+            d:Q(L**-1*M*T**-2)
+    }, each of dimension L*T:
+            1: [a*c**-1*d**-1] = L*T
+            2: [b**0.5*c*d**-0.5] = L*T
 
 This library is based on (Szirtes 2007), and also incorporates ideas and
 examples from (Santiago 2019; Sonin 2001).
