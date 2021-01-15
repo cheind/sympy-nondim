@@ -120,6 +120,8 @@ def test_solve_72(dm_example_72):
     assert P.shape == (3,5)
     assert_allclose(P @ dm_example_72.T, np.tile([[3.,5.,7.]], (3,1))) # PxD
 
+
+
 @pytest.mark.usefixtures('dm_example_72')
 def test_solve_72_with_e(dm_example_72):
     # Explicitly specify matrix-e using the values from pp. 138
@@ -143,8 +145,8 @@ def test_solve_78(dm_example_78):
         [ 1.,  1.,  0., -1., -1.],
     ])
     assert_allclose(P @ dm_example_78.T, np.tile([[2.,0.,0.]], (4,1))) # PxD
-    
-    # info = slv.solver_info(vs_example_78, si.M**2)
+
+     # info = slv.solver_info(vs_example_78, si.M**2)
     # assert info.n_s == 2
     # P = slv.solve(vs_example_78, si.M**2, keep_rows=[0,1])
     # from ..io import fmt_solution
@@ -171,3 +173,35 @@ def test_solve_78(dm_example_78):
 
     # what if we took q==si.M**2 which corresponds to the row being deleted?
     # -> q becomes dimensionless
+
+
+
+@pytest.mark.usefixtures('dm_example_72')
+def test_solver_class(dm_example_72):
+    # Explicitly specify matrix-e using the values from pp. 138
+    L,M,T = LMT.base_quantities()
+    vs = LMT.qs_from_dm(dm_example_72) # Interpret dm in the LMT system
+    s = slv.Solver(vs, LMT.q([3., 5., 7.]))
+    assert s.variables == {
+        'a': L*M**2*T**3, 
+        'b': L**2*M**4*T**4, 
+        'c': L**3*M**3*T**3, 
+        'd': L**4*T**2, 
+        'e': L**5*M**2*T}
+    r = s.solve()
+    assert_allclose(r.P @ dm_example_72.T, np.tile([[3.,5.,7.]], (3,1)))
+    
+    opts = slv.SolverOptions(col_perm=range(5), e=np.array([[1, 0],[2, 0]]))
+
+    r = s.solve(select_values={'a':[1, 0], 'b':[2, 0]})
+    assert r.P.shape == (2,5)
+    assert_allclose(r.P, [
+        [1., 2, -1.8, 0.6, 0.2],
+        [0,  0, 37/15., 6/15., -18/15.] 
+    ])
+
+    r = s.solve(select_values={'d':[1], 'e':[2]})
+    assert r.P.shape == (1,5)
+    assert_allclose(r.P, [
+        [2, 5, -7.666667, 1, 2],
+    ])

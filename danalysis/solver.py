@@ -1,8 +1,11 @@
-import numpy as np
 import itertools as it
-from typing import Optional, List
+from typing import Optional, List, Dict, Mapping, Union, Iterable
+from collections import abc
 from dataclasses import dataclass
+import string
 import logging
+
+import numpy as np
 
 from . import utils as u
 from . import sanity_checks as checks
@@ -316,4 +319,98 @@ def solve(dm, q, info=None, opts=None, strict=True):
     checks.result_dimension_match(PT, dm, q, strict)
     
     return PT
-    
+
+from .quantities import DimensionalSystem, Q, _fmt_dimensions
+
+class Result:
+    def __init__(
+        self, 
+        info: SolverInfo, 
+        dimsys: DimensionalSystem,
+        P: np.ndarray, 
+        vs: Dict[str, Q]
+    ):
+        self.info = info
+        self.dimsys = dimsys
+        self.P = P
+        self.variables = vs
+
+    def __repr__(self):
+        return f'Result<{self.P}>'
+
+    @property
+    def result_q(self) -> Q:
+        '''Dimension of each variable product.'''
+        qs = self.variables.values()
+        fd = u.variable_product(qs, self.P[0])
+        return self.dimsys.q(fd)
+
+    def __str__(self):        
+        if len(self.P) == 0:
+            return 'Found 0 solutions.'        
+
+        names = self.variables.keys()
+        finaldim = self.result_q
+        m = (
+            f'Found {len(self.P)} variable products, each ' \
+            f'of dimension {finaldim}:\n'
+        )
+        for i,p in enumerate(self.P):
+            # Here we reuse fmt_dimensions as computing the product of variables
+            # is the same as computing the derived dimension.
+            s = _fmt_dimensions(p, names)
+            m = m + f'{i+1:4}: [{s}] = {finaldim}\n'
+        return m
+
+
+
+class Solver:
+    variables: Dict[str, Q]
+    q: Q
+    dm: np.ndarray
+    info: SolverInfo
+
+    def __init__(self, variables: Union[Mapping[str, Q], Iterable[Q]], q: Q):
+        if isinstance(variables, abc.Mapping):
+            variables = dict(variables)
+        elif isinstance(variables, abc.Iterable):
+            variables = {n:v for n,v in zip(string.ascii_lowercase, variables)}
+        else:
+            raise ValueError('Variables needs to be mapping or sequence.')
+
+        if (not all([isinstance(v, Q) for v in variables.values()]) or 
+                not isinstance(q, Q)):
+            raise ValueError('Variables and q need to be Q types.')
+
+        self.variables = variables
+        self.q = q
+        self.dm = u.dimensional_matrix(self.variables.values())
+        self.info = solver_info(self.dm, self.q)
+
+    def solve(self, 
+            select_values: Dict[str, Iterable[float]] = None) -> np.ndarray:
+        opts = SolverOptions()
+        if select_values is not None:
+            if len(select_values) != self.info.n_free_variables:
+                raise ValueError(
+                    f'Number of variables in `select_values` does not '
+                    f'match number of free variables {self.info.n_free_variables}'
+                )            
+            vn = list(self.variables.keys())
+            fn = list(select_values.keys())
+            invalid_vars = set(fn) - set(vn)
+            if len(invalid_vars) != 0:
+                raise ValueError(
+                    f'Unknown variables selected {invalid_vars}'
+                )
+            # Move variables of free_values to the left via
+            # col_perm field in SolverOptions
+            leftids = [vn.index(n) for n in fn]
+            allids = set(range(self.info.n_v))
+            rightids = list(allids - set(leftids))
+            opts.col_perm = leftids + rightids
+            # Construct e matrix as Nfree x Nsol matrix
+            opts.e = np.array(list(select_values.values()))
+
+        P = solve(self.dm, self.q, self.info, opts=opts)
+        return Result(self.info, self.q.dimsys, P, self.variables)
