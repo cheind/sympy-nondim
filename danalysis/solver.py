@@ -8,9 +8,9 @@ import logging
 import numpy as np
 
 from . import utils as u
+from . import solver_utils as su
 from . import sanity_checks as checks
 from . import meta
-from . import linalg
 from . import quantities as qt
 
 _logger = logging.getLogger('danalysis')
@@ -29,7 +29,7 @@ def solve(dm, q, info=None, opts=None, strict=True):
     dm = np.atleast_2d(dm)
     q = np.asarray(q)
 
-    drow_ids, col_perm = linalg.ensure_nonsingular_A(dm, info, remove_row_ids=opts.remove_row_ids, col_perm=opts.col_perm)
+    drow_ids, col_perm = su.ensure_nonsingular_A(dm, info, remove_row_ids=opts.remove_row_ids, col_perm=opts.col_perm)
     checks.assert_zero_q_when_all_zero_rows(dm, q)  
     if info.n_s < info.n_d:
         _logger.info((
@@ -47,9 +47,9 @@ def solve(dm, q, info=None, opts=None, strict=True):
     checks.assert_square_singular(dmr, qr)
 
     # Form E and Z
-    A, B = linalg.matrix_A(dmr, info), linalg.matrix_B(dmr, info)
-    E = linalg.matrix_E(A, B, info)
-    Z = linalg.matrix_Z(qr, info, e=opts.e)
+    A, B = su.matrix_A(dmr, info), su.matrix_B(dmr, info)
+    E = su.matrix_E(A, B, info)
+    Z = su.matrix_Z(qr, info, e=opts.e)
     
     # Form independent variable products (in columns)
     P = E @ Z    
