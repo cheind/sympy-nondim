@@ -351,15 +351,19 @@ class Result:
 
         names = self.variables.keys()
         finaldim = self.result_q
+        vitems = [f'\t{n}:{v!r}' for n,v in self.variables.items()]
+        vinner = ",\n".join(vitems)
+        vset = f'\n{{\n{vinner}\n}}'
+
         m = (
-            f'Found {len(self.P)} variable products, each ' \
+            f'Found {len(self.P)} variable products of variables {vset}, each ' \
             f'of dimension {finaldim}:\n'
         )
         for i,p in enumerate(self.P):
             # Here we reuse fmt_dimensions as computing the product of variables
             # is the same as computing the derived dimension.
             s = _fmt_dimensions(p, names)
-            m = m + f'{i+1:4}: [{s}] = {finaldim}\n'
+            m = m + f'\t{i+1}: [{s}] = {finaldim}\n'
         return m
 
 
@@ -381,7 +385,7 @@ class Solver:
         if (not all([isinstance(v, Q) for v in variables.values()]) or 
                 not isinstance(q, Q)):
             raise ValueError('Variables and q need to be Q types.')
-
+            
         self.variables = variables
         self.q = q
         self.dm = u.dimensional_matrix(self.variables.values())
