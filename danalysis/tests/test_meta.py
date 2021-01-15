@@ -1,11 +1,12 @@
 import pytest
 
 from .test_fixtures import *
+from .. import meta
 from .. import solver as slv
 
 @pytest.mark.usefixtures('dm_example_72')
 def test_matrix_solver_info(dm_example_72):
-    info = slv.solver_info(dm_example_72, [0.,0.,0.])
+    info = meta.info(dm_example_72, [0.,0.,0.])
     assert not info.square
     assert info.singular
     assert info.n_d == 3
@@ -18,7 +19,7 @@ def test_matrix_solver_info(dm_example_72):
     assert info.dimensionless
     assert info.n_s == 3
 
-    info = slv.solver_info(dm_example_72, [1.,0.,0.])
+    info = meta.info(dm_example_72, [1.,0.,0.])
     assert not info.square
     assert info.singular
     assert info.n_d == 3

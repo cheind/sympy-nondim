@@ -5,12 +5,13 @@ from numpy.testing import assert_allclose
 
 from .test_fixtures import *
 from ..standard_systems import LMT, SI
+from .. import meta
 from .. import solver as slv
 from .. import utils as u
 
 @pytest.mark.usefixtures('dm_example_72')
 def test_matrix_A_B_E(dm_example_72):
-    info = slv.solver_info(dm_example_72, [0.,0.,0.])
+    info = meta.info(dm_example_72, [0.,0.,0.])
     A, B = slv._matrix_A(dm_example_72, info), slv._matrix_B(dm_example_72, info)
     E = slv._matrix_E(A, B, info)
     assert_allclose(A, [[3,4,5],[3,0,2],[3,2,1]])
@@ -20,20 +21,20 @@ def test_matrix_A_B_E(dm_example_72):
 @pytest.mark.usefixtures('dm_example_78')
 def test_row_removal_generator(dm_example_78):
     # 3 rows, 2/3 lin. dependent -> one row has to be removed
-    info = slv.solver_info(dm_example_78, [0.,0.,0.])
+    info = meta.info(dm_example_78, [0.,0.,0.])
     order = list(slv._row_removal_generator(dm_example_78, info))
     assert order == [(0,), (1,), (2,)]
 
 @pytest.mark.usefixtures('dm_example_72')
 @pytest.mark.usefixtures('dm_example_78')
 def test_ensure_nonsingular_A(dm_example_72, dm_example_78):
-    info = slv.solver_info(dm_example_72, [0.,0.,0.])
+    info = meta.info(dm_example_72, [0.,0.,0.])
     opts = slv.SolverOptions()
     del_row, col_order = slv._ensure_nonsingular_A(dm_example_72, info, opts)
     assert len(del_row) == 0
     assert_allclose(col_order,range(info.n_v))
 
-    info = slv.solver_info(dm_example_78, [0.,0.,0.])
+    info = meta.info(dm_example_78, [0.,0.,0.])
     del_row, col_order = slv._ensure_nonsingular_A(dm_example_78, info, opts)
     assert len(del_row) == 1
     assert del_row[0] in [1,2]
@@ -43,7 +44,7 @@ def test_ensure_nonsingular_A(dm_example_72, dm_example_78):
     dm[1,0] = 1
     dm[0,1] = 1
     dm[0,2] = 1
-    info = slv.solver_info(dm, [0.,0.,0.])
+    info = meta.info(dm, [0.,0.,0.])
     del_row, col_order = slv._ensure_nonsingular_A(dm, info, opts)
     assert len(del_row) == 1
     assert del_row[0] == 2
@@ -58,7 +59,7 @@ def test_ensure_nonsingular_A(dm_example_72, dm_example_78):
     dm[1,0] = 1
     dm[0,1] = 1
     dm[0,2] = 1
-    info = slv.solver_info(dm, [0.,0.,0.])
+    info = meta.info(dm, [0.,0.,0.])
     opts = slv.SolverOptions(
         remove_row_ids=[2],
         col_perm=[1,2,0]
@@ -146,7 +147,7 @@ def test_solve_78(dm_example_78):
     ])
     assert_allclose(P @ dm_example_78.T, np.tile([[2.,0.,0.]], (4,1))) # PxD
 
-     # info = slv.solver_info(vs_example_78, si.M**2)
+     # info = meta.info(vs_example_78, si.M**2)
     # assert info.n_s == 2
     # P = slv.solve(vs_example_78, si.M**2, keep_rows=[0,1])
     # from ..io import fmt_solution
