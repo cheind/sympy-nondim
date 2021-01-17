@@ -3,17 +3,19 @@ import sympy
 from sympy import matrices
 from sympy import symbols
 from sympy.physics.units.systems import SI
-from sympy.physics.units import length, mass, acceleration, force, velocity,volume, pressure, time, Dimension
+from sympy.physics.units import length, mass, acceleration, force, velocity,volume, pressure, time, Dimension, DimensionSystem
 from sympy.physics.units import gravitational_constant as G
 from sympy.physics.units.systems.si import dimsys_SI
 import numpy as np
 
 import itertools as it
 
-def pi_groups(*variables):
+def pi_groups(*variables, dimsys=None):
     # Create dimensional matrix
+    if dimsys is None:
+        dimsys = dimsys_SI
     dimdicts = [
-        dimsys_SI.get_dimensional_dependencies(v) 
+        dimsys.get_dimensional_dependencies(v) 
         for v in variables
     ]
     
@@ -35,14 +37,57 @@ def pi_groups(*variables):
         groups.append(pi)
     return groups
 
-# density = Dimension('density', symbol='rho')
-# print(dimsys_SI.get_dimensional_dependencies(density))
-#print(dimsys_SI.get_dimensional_dependencies(F))
+from dataclasses import dataclass
+class DerivedDim:
+    name: str
+    symbol: str = None
+    dims: Dimension
+    
+from typing import Iterable, Tuple
+
+def extend(dds: Iterable[DerivedDim], dimsys: DimensionSystem):
+    deps = dimsys.get_dimensional_dependencies
+    added = {
+        Dimension(d.name, d.symbol) : deps(d.dims)
+        for d in dds        
+    }
+    return dimsys.extend([], new_dim_deps=added)
+
+def extend(dimsys: DimensionSystem, dd: Tuple[str,str,Dimension]):
+    deps = dimsys.get_dimensional_dependencies
+    dim = Dimension(dd[0], dd[1])
+    edimsys = dimsys.extend([], new_dim_deps={dim:deps(dd[2])})
+    return edimsys, dim
+
+class Extender:
+    def __init__(self, dimsys: DimensionSystem):
+        self.dimsys = dimsys
+        self.edict = {}
+
+    def __call__(
+            self, 
+            name: str, 
+            ddim: Dimension, 
+            symbol: str = None) -> Dimension:
+        d = Dimension(name, symbol=symbol)
+        self.edict[d] = self.dimsys.get_dimensional_dependencies(ddim)
+        return d
+
+    def apply(self):
+        return self.dimsys.extend([], new_dim_deps=self.edict)
+
+e = Extender(dimsys_SI)
+density = e('density', mass/volume, symbol='rho')
+dimsys = e.apply()
+
+def is_dimless(dimsys: DimensionSystem, dim: Dimension):
+    return len(dimsys.get_dimensional_dependencies(dim)) == 0
 
 
-groups = pi_groups(force, length, velocity, mass/volume, pressure*time)
+
+groups = pi_groups(force, length, velocity, density, pressure*time, dimsys=dimsys)
 print(groups)
-print([g.is_dimensionless for g in groups])
+print([is_dimless(dimsys, g) for g in groups])
 
 #mass/volume, )
 
