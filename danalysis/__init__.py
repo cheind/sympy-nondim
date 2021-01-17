@@ -4,3 +4,4 @@ from . import utils
 from .meta import info
 from .solver import Solver, solve
 
+__version__ = '0.1.0'
