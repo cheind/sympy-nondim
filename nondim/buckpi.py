@@ -9,9 +9,27 @@ import sympy.physics.units.systems.si as si
 from sympy import Symbol
 
 def dimensional_matrix(
-        vdims: Iterable[units.Dimension], 
-        dimsys: units.DimensionSystem = None) -> Tuple[matrices.Matrix]:
-    '''Returns the Nd x Nv dimensional matrix.'''
+        vdims: Sequence[units.Dimension], 
+        dimsys: units.DimensionSystem = None) -> matrices.Matrix:
+    '''Returns the dimensional matrix from the given variables.
+
+    The dimensional matrix `M` represents a `Nd (number of base dimensions) x Nv (number of variables) matrix`, whose entry `ij` corresponds to the
+    exponent of the j-th variable in the i-th dimension.
+
+    Params
+    ------
+    vdims: Sequence[units.Dimension]
+        A sequence of sympy.physics.units.Dimension representing the possibly
+        (derived) dimensions of each variable.
+    dimsys: units.DimensionSystem, optional
+        The associated sympy.physics.units.DimensionSystem. If not specified,
+        `dimsys_default` is used.
+
+    Returns
+    -------
+    matrix: sympy.matrices.Matrix
+        Nd x Nv dimensional matrix
+    '''
 
     if dimsys is None:
         dimsys = si.dimsys_default
@@ -32,13 +50,41 @@ def dimensional_matrix(
 
     return dm
 
-Variables = Union[Mapping[Symbol, units.Dimension], Iterable[units.Dimension]]
+Variables = Union[Mapping[Symbol, units.Dimension], Sequence[units.Dimension]]
 
 def pi_groups(
         variables: Variables, 
-        dimsys: units.DimensionSystem = None):
-    '''Returns all independent variable products that non-dimensionalize the given variables.'''
+        dimsys: units.DimensionSystem = None) -> Sequence[sympy.Expr]:
+    '''Returns all independent dimensionless variable products.
 
+    This method is based on the Buckingham-Pi theoreom and frames non-dimensionalization in linear algebra terms. 
+    
+    First note, all derived dimensions are products of base dimensions (A,B,C) raised to some power (a,b,c):
+        [x] = A^a*B^b*C^c
+    The dimensions form an abelian group under multiplication and we may associate with each dimension an (exponent) vector in R^d space, whose entries (a,b,c) correspond to the exponents along the base dimensions (A,B,C) by the. The zero-vector represents
+        A^0*B^0*C^0 = 1
+    unity/dimensionless variables. Next, note that vector addition `x+y` corresponds to a dimensional product
+        [v*w] = A^(xa+ya)B^(xb+yb)C^(xc+yc)
+    Moreover, vector scalar multiplication `sx` corresponds to raising a dimension to the power s
+        [v^s] = A^sxaB^sxbC^sxc
+    Finally, note the product of n variables (x,y) raised to powers (s,t) can be written as matrix-vector product
+        [x^s*y^t] = M*[s,t]^T
+    where M is the dimensional matrix formed by column-stacking the dimensional vectors of all system variables. Then, the set of (exponent) vectors 
+        {v|Mv=0, <v_i,v_j>=0} 
+    naturally represents all possible independent dimensionless variable products. This set of vectors is known as the nullspace/nullity of M and represents the solution this method computes.
+
+    Params
+    ------
+    variables: Variables
+        Either a sequence of sympy.physics.units.Dimension or a map from symbols to sympy.physics.units.Dimension.
+    dimsys: units.DimensionSystem, optional
+        The associated sympy.physics.units.DimensionSystem. If not specified,
+        `dimsys_default` is used.
+
+    Returns
+    pi: Sequence[sympy.Expr]
+        Sequence of expressions representing independent variable products.
+    '''
     if len(variables) == 0:
         raise ValueError('Need at least one variable.')
 
