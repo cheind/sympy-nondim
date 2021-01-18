@@ -1,17 +1,18 @@
-from typing import Iterable, Tuple, List, Sequence, Mapping, Union
-from collections import abc
 import itertools as it
+from collections import abc
 from functools import reduce
+from typing import Iterable, List, Mapping, Sequence, Tuple, Union
 
 import sympy.matrices as matrices
 import sympy.physics.units as units
 import sympy.physics.units.systems.si as si
 from sympy import Symbol
 
+
 def dimensional_matrix(
-        vdims: Sequence[units.Dimension], 
+        vdims: Sequence[units.Dimension],
         dimsys: units.DimensionSystem = None) -> matrices.Matrix:
-    '''Returns the dimensional matrix from the given variables.
+    '''Returns the dimensional matrix from the given variables. 
 
     The dimensional matrix `M` represents a `Nd (number of base dimensions) x Nv (number of variables) matrix`, whose entry `ij` corresponds to the
     exponent of the j-th variable in the i-th dimension.
@@ -30,7 +31,6 @@ def dimensional_matrix(
     matrix: sympy.matrices.Matrix
         Nd x Nv dimensional matrix
     '''
-
     if dimsys is None:
         dimsys = si.dimsys_default
 
@@ -50,18 +50,19 @@ def dimensional_matrix(
 
     return dm
 
+
 Variables = Union[Mapping[Symbol, units.Dimension], Sequence[units.Dimension]]
 
-def pi_groups(
-        variables: Variables, 
-        dimsys: units.DimensionSystem = None) -> Sequence[sympy.Expr]:
+
+def pi_groups(variables: Variables,
+              dimsys: units.DimensionSystem = None) -> Sequence[sympy.Expr]:
     '''Returns all independent dimensionless variable products.
 
     This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra. 
 
     Background
     ----------
-    
+
     First note, physical dimensions form an abelian group unter multiplication. Each physical dimension may be represented by a vector `v` in a d-dimensional vector space, spanned by the unit vectors of base dimensions. The components of `v` represent the exponents of the corresponding base dimensions. For example, the dimension `L*M*T**-2` can be represented in by a vector whose components are [1,1,-2] in a coordinate frame spanned by the unit vectors eL, eM, eT. The zero vector [0,0,0] represents a unit/dimensionless vector.
 
     Consider two dimensional physical variables, `x` and `y` and let
@@ -105,7 +106,7 @@ def pi_groups(
     else:
         vdims = list(variables)
         vsyms = vdims
-        
+
     # The nullity of the dimensional matrix {v|Av=0} represents all possible independent variable product groups, with v_i being the exponent of the i-th variable.
     dm = dimensional_matrix(vdims, dimsys=dimsys)
     nullity = dm.nullspace()
@@ -113,40 +114,49 @@ def pi_groups(
     for nv in nullity:
         generator = zip(vsyms, nv)
         first = next(generator)
-        pi = reduce(
-            lambda t,ve: t * (ve[0]**ve[1]), 
-            generator, 
-            first[0]**first[1]
-        )
+        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
+                    first[0]**first[1])
         groups.append(pi)
     return groups
+
 
 # Function alias
 nondim = pi_groups
 
-
 if __name__ == '__main__':
     import sympy
     var = [units.force, units.time, units.length, units.mass]
-    a,b,c,d = sympy.symbols('a b c d')
+    a, b, c, d = sympy.symbols('a b c d')
 
     print(pi_groups(var, dimsys=si.dimsys_SI))
-    print(pi_groups({a:units.force, b:units.time, c:units.length, d:units.mass}, dimsys=si.dimsys_SI))
+    print(
+        pi_groups(
+            {
+                a: units.force,
+                b: units.time,
+                c: units.length,
+                d: units.mass
+            },
+            dimsys=si.dimsys_SI))
 
-    g = pi_groups({a:units.force, b:units.time, c:units.length, d:units.mass}, dimsys=si.dimsys_SI)
+    g = pi_groups(
+        {
+            a: units.force,
+            b: units.time,
+            c: units.length,
+            d: units.mass
+        },
+        dimsys=si.dimsys_SI)
 
-    print(sympy.latex(g))
+    # print(sympy.latex(g))
 
     from .utils import extend
     dimsys, (density, dviscosity) = extend(
-        ('density', 'rho', units.mass/units.volume),
-        ('dynamic_viscosity', 'mu', units.pressure*units.time)
-    )
-    print(sympy.latex(pi_groups([
-        units.force,
-        units.length,
-        units.velocity,
-        density,
-        dviscosity
-    ], dimsys=dimsys)))
-
+        ('density', 'rho', units.mass / units.volume),
+        ('dynamic_viscosity', 'mu', units.pressure * units.time))
+    print(
+        sympy.latex(
+            pi_groups([
+                units.force, units.length, units.velocity, density, dviscosity
+            ],
+                      dimsys=dimsys)))
