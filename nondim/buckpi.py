@@ -6,7 +6,7 @@ from typing import Iterable, List, Mapping, Sequence, Tuple, Union
 import sympy.matrices as matrices
 import sympy.physics.units as units
 import sympy.physics.units.systems.si as si
-from sympy import Symbol
+from sympy import Symbol, Expr
 
 
 def dimensional_matrix(
@@ -55,7 +55,7 @@ Variables = Union[Mapping[Symbol, units.Dimension], Sequence[units.Dimension]]
 
 
 def pi_groups(variables: Variables,
-              dimsys: units.DimensionSystem = None) -> Sequence[sympy.Expr]:
+              dimsys: units.DimensionSystem = None) -> Sequence[Expr]:
     '''Returns all independent dimensionless variable products.
 
     This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra.
@@ -79,9 +79,9 @@ def pi_groups(variables: Variables,
 
     From the above follows, that the product of variables raised to specific powers can be expressed as matrix-vector product
         dim(x^s*y^t) = M*[s,t]^T,
-    where `M` is the dimensional `Nd (#base-dims) x Nv (#variables)` matrix formed by column-stacking the dimensional vectors associated with each variable. Now, dimensionless variable products are then given by the set of linear independent vectors `n` for which
+    where `M` is the dimensional `Nd (#base-dims) x Nv (#variables)` matrix formed by column-stacking the dimensional vectors associated with each variable. Now, the result of this method are independent dimensionless variable products that are given by the set of vectors `n` for which
         {n | Mn = 0}.
-    This definition corresponds with the linear independent vectors spanning the nullspace of M and are the solution of this procedure.
+    I.e the linear independent vectors spanning the nullspace of M.
 
     Params
     ------
@@ -92,20 +92,24 @@ def pi_groups(variables: Variables,
         `dimsys_default` is used.
 
     Returns
-    pi: Sequence[sympy.Expr]
+    -------
+    pi: Sequence[Expr]
         Sequence of expressions representing independent variable products.
     '''
-    if len(variables) == 0:
-        raise ValueError('Need at least one variable.')
-
     vsyms = None
     vdims = None
     if isinstance(variables, abc.Mapping):
         vsyms = variables.keys()
         vdims = variables.values()
-    else:
+    elif isinstance(variables, abc.Sequence):
         vdims = list(variables)
         vsyms = vdims
+    else:
+        raise ValueError(
+            'Variables argument needs to be Mapping or Sequence type.')
+
+    if len(variables) == 0:
+        raise ValueError('Need at least one variable.')
 
     # The nullity of the dimensional matrix {v|Av=0} represents all possible
     # independent variable product groups, with v_i being the exponent of the
@@ -123,7 +127,7 @@ def pi_groups(variables: Variables,
 
 
 # Function alias
-nondim = pi_groups
+nondimensionalize = pi_groups
 
 if __name__ == '__main__':
     import sympy
