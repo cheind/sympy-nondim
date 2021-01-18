@@ -70,7 +70,7 @@ def pi_groups(
     then 
         dim(x*y) = L^(xl+yl) M^(xm+ym) T^(xt+yt) = vx + vy.
 
-    Also note, for a scalar `s`
+    Also note, for scalar `s`
         dim(x^s) = L^(s*xl) M^(s*xm) T^(s*xt) = _vx*s
 
     Method
