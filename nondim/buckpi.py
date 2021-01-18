@@ -57,21 +57,30 @@ def pi_groups(
         dimsys: units.DimensionSystem = None) -> Sequence[sympy.Expr]:
     '''Returns all independent dimensionless variable products.
 
-    This method is based on the Buckingham-Pi theoreom and frames non-dimensionalization in linear algebra terms. 
+    This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra. 
+
+    Background
+    ----------
     
-    First note, all derived dimensions are products of base dimensions (A,B,C) raised to some power (a,b,c):
-        [x] = A^a*B^b*C^c
-    The dimensions form an abelian group under multiplication and we may associate with each dimension an (exponent) vector in R^d space, whose entries (a,b,c) correspond to the exponents along the base dimensions (A,B,C) by the. The zero-vector represents
-        A^0*B^0*C^0 = 1
-    unity/dimensionless variables. Next, note that vector addition `x+y` corresponds to a dimensional product
-        [v*w] = A^(xa+ya)B^(xb+yb)C^(xc+yc)
-    Moreover, vector scalar multiplication `sx` corresponds to raising a dimension to the power s
-        [v^s] = A^sxaB^sxbC^sxc
-    Finally, note the product of n variables (x,y) raised to powers (s,t) can be written as matrix-vector product
-        [x^s*y^t] = M*[s,t]^T
-    where M is the dimensional matrix formed by column-stacking the dimensional vectors of all system variables. Then, the set of (exponent) vectors 
-        {v|Mv=0, <v_i,v_j>=0} 
-    naturally represents all possible independent dimensionless variable products. This set of vectors is known as the nullspace/nullity of M and represents the solution this method computes.
+    First note, physical dimensions form an abelian group unter multiplication. Each physical dimension may be represented by a vector `v` in a d-dimensional vector space, spanned by the unit vectors of base dimensions. The components of `v` represent the exponents of the corresponding base dimensions. For example, the dimension `L*M*T**-2` can be represented in by a vector whose components are [1,1,-2] in a coordinate frame spanned by the unit vectors eL, eM, eT. The zero vector [0,0,0] represents a unit/dimensionless vector.
+
+    Consider two dimensional physical variables, `x` and `y` and let
+        dim(x) = L^xl M^xm T^xt = [xl, xm, xt] =: vx
+        dim(y) = L^yl M^ym T^yt = [yl, ym, yt] =: vy
+    then 
+        dim(x*y) = L^(xl+yl) M^(xm+ym) T^(xt+yt) = vx + vy.
+
+    Also note, for a scalar `s`
+        dim(x^s) = L^(s*xl) M^(s*xm) T^(s*xt) = _vx*s
+
+    Method
+    ------
+
+    From the above follows, that the product of variables raised to specific powers can be expressed as matrix-vector product
+        dim(x^s*y^t) = M*[s,t]^T,
+    where `M` is the dimensional `Nd (#base-dims) x Nv (#variables)` matrix formed by column-stacking the dimensional vectors associated with each variable. Now, dimensionless variable products are then given by the set of linear independent vectors `n` for which
+        {n | Mn = 0}.
+    This definition corresponds with the linear independent vectors spanning the nullspace of M and are the solution of this procedure.
 
     Params
     ------
