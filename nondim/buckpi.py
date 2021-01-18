@@ -12,7 +12,7 @@ from sympy import Symbol
 def dimensional_matrix(
         vdims: Sequence[units.Dimension],
         dimsys: units.DimensionSystem = None) -> matrices.Matrix:
-    '''Returns the dimensional matrix from the given variables. 
+    '''Returns the dimensional matrix from the given variables.
 
     The dimensional matrix `M` represents a `Nd (number of base dimensions) x Nv (number of variables) matrix`, whose entry `ij` corresponds to the
     exponent of the j-th variable in the i-th dimension.
@@ -58,7 +58,7 @@ def pi_groups(variables: Variables,
               dimsys: units.DimensionSystem = None) -> Sequence[sympy.Expr]:
     '''Returns all independent dimensionless variable products.
 
-    This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra. 
+    This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra.
 
     Background
     ----------
@@ -68,7 +68,7 @@ def pi_groups(variables: Variables,
     Consider two dimensional physical variables, `x` and `y` and let
         dim(x) = L^xl M^xm T^xt = [xl, xm, xt] =: vx
         dim(y) = L^yl M^ym T^yt = [yl, ym, yt] =: vy
-    then 
+    then
         dim(x*y) = L^(xl+yl) M^(xm+ym) T^(xt+yt) = vx + vy.
 
     Also note, for scalar `s`
@@ -107,7 +107,9 @@ def pi_groups(variables: Variables,
         vdims = list(variables)
         vsyms = vdims
 
-    # The nullity of the dimensional matrix {v|Av=0} represents all possible independent variable product groups, with v_i being the exponent of the i-th variable.
+    # The nullity of the dimensional matrix {v|Av=0} represents all possible
+    # independent variable product groups, with v_i being the exponent of the
+    # i-th variable.
     dm = dimensional_matrix(vdims, dimsys=dimsys)
     nullity = dm.nullspace()
     groups = []
@@ -129,15 +131,14 @@ if __name__ == '__main__':
     a, b, c, d = sympy.symbols('a b c d')
 
     print(pi_groups(var, dimsys=si.dimsys_SI))
-    print(
-        pi_groups(
-            {
-                a: units.force,
-                b: units.time,
-                c: units.length,
-                d: units.mass
-            },
-            dimsys=si.dimsys_SI))
+    print(pi_groups(
+        {
+            a: units.force,
+            b: units.time,
+            c: units.length,
+            d: units.mass
+        },
+        dimsys=si.dimsys_SI))
 
     g = pi_groups(
         {
@@ -159,4 +160,4 @@ if __name__ == '__main__':
             pi_groups([
                 units.force, units.length, units.velocity, density, dviscosity
             ],
-                      dimsys=dimsys)))
+                dimsys=dimsys)))
