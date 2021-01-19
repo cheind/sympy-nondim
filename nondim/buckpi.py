@@ -6,7 +6,7 @@ from typing import Iterable, List, Mapping, Sequence, Tuple, Union
 import sympy.matrices as matrices
 import sympy.physics.units as units
 import sympy.physics.units.systems.si as si
-from sympy import Symbol, Expr
+from sympy import Symbol, Expr, Eq, Function
 
 
 def _dimensional_matrix(
@@ -52,6 +52,7 @@ def _dimensional_matrix(
 
 
 Variables = Union[Mapping[Symbol, units.Dimension], Sequence[units.Dimension]]
+
 
 def nondim(
         variables: Variables,
@@ -123,4 +124,42 @@ def nondim(
         pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
                     first[0]**first[1])
         groups.append(pi)
+    return groups
+
+
+def nondim_eq(eq: Eq, dimsys: units.DimensionSystem = None) -> Function:
+    if not isinstance(eq.lhs, units.Dimension):
+        raise ValueError('LHS of equation needs to be dimension')
+    if not isinstance(eq.rhs, Function):
+        raise ValueError(
+            'RHS needs to be unknown function of physical dimensions.')
+    if not all([isinstance(a, units.Dimension) for a in eq.rhs.args]):
+        raise ValueError(
+            'RHS needs to be unknown function of physical dimensions.')
+    vdims = [*eq.rhs.args] + [eq.lhs]  # left-hand-side last
+    dm = _dimensional_matrix(vdims, dimsys=dimsys)
+    nspace = dm.nullspace()
+
+    groups = []
+    for nv in nspace:
+        generator = zip(vdims, nv)
+        first = next(generator)
+        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
+                    first[0]**first[1])
+        groups.append(pi)
+
+    np = len(groups)
+    if np == 0:
+        return 0
+    elif np == 1:
+        return Eq(Symbol('C', constant=True), groups[0].name)
+    else:
+        # Search for first term that includes the original dependent variable
+        deps = [g.name for g in groups if eq.lhs.name in g.free_symbols]
+        indeps = [g.name for g in groups if eq.lhs.name not in g.free_symbols]
+        if len(deps) == 0 or len(deps) > 1:
+            return Eq(Symbol('C', constant=True), Function('F')(*deps, *indeps))
+        else:
+            return Eq(deps[0], Function('F')(*indeps))
+
     return groups
