@@ -1,4 +1,5 @@
 import sympy
+from sympy.physics.units import Dimension
 import sympy.physics.units as units
 import sympy.physics.units.systems.si as si
 
@@ -12,6 +13,10 @@ def test_nondim():
     g = nondim([units.mass, units.mass])
     assert len(g) == 1
     assert u.is_dimensionless(g[0])
+
+def test_sphere_drag():
+    # Taken from "A First Course in Dimensional Analysis: 
+    # Simplifying Complex Phenomena Using Physical Insight"
 
     dimsys, density, dviscosity = u.extend(
         ('density', 'rho', units.mass/units.volume),
@@ -48,4 +53,25 @@ def test_nondim():
     assert sum([re==g or 1/re==g for g in gs]) == 1 # one over is fine also since [v] == [1/v] for dimensionless variables
     assert sum([cd==g or 1/cd==g for g in gs]) == 1 # one over is fine also since [v] == [1/v] for dimensionless variables
 
+def test_pendulum_swing():
+    # Taken from "A Student’s Guide to Dimensional Analysis"
+
+    m,l,g,t = sympy.symbols('m l g t', real=True, positive=True)
+    theta = sympy.symbols('theta', real=True)
+
+    sdict = {          
+        m:units.mass,           # its mass (actually will turn out to be superfluous)
+        l:units.length,         # length of pendulum
+        g:units.acceleration,   # accel of gravity
+        theta:Dimension(1),     # max angle
+        t:units.time            # period
+    }
+    gs = nondim(sdict)
+    f = sympy.Function('f')(gs[0])
+    eq = sympy.Eq(gs[1], f)
+    seq = sympy.Eq(t, sympy.solve(eq, t)[0])
     
+    assert seq.lhs == t
+    assert not m in seq.rhs.free_symbols
+    assert sympy.expand(seq.rhs - sympy.sqrt(l/g)*f) == 0
+
