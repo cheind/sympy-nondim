@@ -36,17 +36,31 @@ Which prints
             1: [a*c**-1*d**-1] = L*T
             2: [b**0.5*c*d**-0.5] = L*T
 
-This library is based on (Szirtes 2007), and also incorporates ideas and
-examples from (Santiago 2019; Sonin 2001).
+This library is based on (Szirtes 2007), and also incorporates examples
+from (Santiago 2019; Sonin 2001; Lemons 2017; Schetz and Fuhs 1999)
 
 ## References
 
 <div id="refs" class="references csl-bib-body hanging-indent">
 
+<div id="ref-lemons2017student" class="csl-entry">
+
+Lemons, Don S. 2017. *A Student’s Guide to Dimensional Analysis*.
+Cambridge University Press.
+
+</div>
+
 <div id="ref-santiago2019first" class="csl-entry">
 
 Santiago, Juan G. 2019. *A First Course in Dimensional Analysis:
 Simplifying Complex Phenomena Using Physical Insight*. MIT Press.
+
+</div>
+
+<div id="ref-schetz1999fundamentals" class="csl-entry">
+
+Schetz, Joseph A, and Allen E Fuhs. 1999. *Fundamentals of Fluid
+Mechanics*. John Wiley & Sons.
 
 </div>
 
