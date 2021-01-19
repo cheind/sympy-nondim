@@ -54,7 +54,7 @@ def test_sphere_drag():
     assert sum([cd==g or 1/cd==g for g in gs]) == 1 # one over is fine also since [v] == [1/v] for dimensionless variables
 
 def test_pendulum_swing():
-    # Taken from "A Student’s Guide to Dimensional Analysis"
+    # Taken from "A Student’s Guide to Dimensional Analysis" pp. ix
 
     m,l,g,t = sympy.symbols('m l g t', real=True, positive=True)
     theta = sympy.symbols('theta', real=True)
