@@ -2,14 +2,14 @@ import sympy
 import sympy.physics.units as units
 import sympy.physics.units.systems.si as si
 
-from ..buckpi import pi_groups
+from ..buckpi import nondim
 from .. import utils as u
 
-def test_pi_groups():
-    g = pi_groups([units.mass, units.length])
+def test_nondim():
+    g = nondim([units.mass, units.length])
     assert len(g) == 0
 
-    g = pi_groups([units.mass, units.mass])
+    g = nondim([units.mass, units.mass])
     assert len(g) == 1
     assert u.is_dimensionless(g[0])
 
@@ -31,7 +31,7 @@ def test_pi_groups():
         mu:dviscosity,               
         drag:units.force,
     }
-    gs = pi_groups(sdict, dimsys=dimsys)
+    gs = nondim(sdict, dimsys=dimsys)
     assert len(gs) == 2 # reynolds number and drag-coefficient (without the constant)
     assert u.is_dimensionless(gs[0].subs(sdict), dimsys)
     assert u.is_dimensionless(gs[1].subs(sdict), dimsys)

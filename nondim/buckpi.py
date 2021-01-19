@@ -9,7 +9,7 @@ import sympy.physics.units.systems.si as si
 from sympy import Symbol, Expr
 
 
-def dimensional_matrix(
+def _dimensional_matrix(
         vdims: Sequence[units.Dimension],
         dimsys: units.DimensionSystem = None) -> matrices.Matrix:
     '''Returns the dimensional matrix from the given variables.
@@ -53,10 +53,10 @@ def dimensional_matrix(
 
 Variables = Union[Mapping[Symbol, units.Dimension], Sequence[units.Dimension]]
 
-
-def pi_groups(variables: Variables,
-              dimsys: units.DimensionSystem = None) -> Sequence[Expr]:
-    '''Returns all independent dimensionless variable products.
+def nondim(
+        variables: Variables,
+        dimsys: units.DimensionSystem = None) -> Sequence[Expr]:
+    '''Returns all independent dimensionless variable products
 
     This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra.
 
@@ -114,7 +114,7 @@ def pi_groups(variables: Variables,
     # The nullity of the dimensional matrix {v|Av=0} represents all possible
     # independent variable product groups, with v_i being the exponent of the
     # i-th variable.
-    dm = dimensional_matrix(vdims, dimsys=dimsys)
+    dm = _dimensional_matrix(vdims, dimsys=dimsys)
     nspace = dm.nullspace()
     groups = []
     for nv in nspace:
@@ -124,44 +124,3 @@ def pi_groups(variables: Variables,
                     first[0]**first[1])
         groups.append(pi)
     return groups
-
-
-# Function alias
-nondimensionalize = pi_groups
-
-if __name__ == '__main__':
-    import sympy
-    var = [units.force, units.time, units.length, units.mass]
-    a, b, c, d = sympy.symbols('a b c d')
-
-    print(pi_groups(var, dimsys=si.dimsys_SI))
-    print(pi_groups(
-        {
-            a: units.force,
-            b: units.time,
-            c: units.length,
-            d: units.mass
-        },
-        dimsys=si.dimsys_SI))
-
-    g = pi_groups(
-        {
-            a: units.force,
-            b: units.time,
-            c: units.length,
-            d: units.mass
-        },
-        dimsys=si.dimsys_SI)
-
-    # print(sympy.latex(g))
-
-    from .utils import extend
-    dimsys, (density, dviscosity) = extend(
-        ('density', 'rho', units.mass / units.volume),
-        ('dynamic_viscosity', 'mu', units.pressure * units.time))
-    print(
-        sympy.latex(
-            pi_groups([
-                units.force, units.length, units.velocity, density, dviscosity
-            ],
-                dimsys=dimsys)))
