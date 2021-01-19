@@ -69,9 +69,14 @@ def test_pendulum_swing():
     gs = nondim(sdict)
     f = sympy.Function('f')(gs[0])
     eq = sympy.Eq(gs[1], f)
+    print(eq)
     seq = sympy.Eq(t, sympy.solve(eq, t)[0])
     
     assert seq.lhs == t
     assert not m in seq.rhs.free_symbols
     assert sympy.expand(seq.rhs - sympy.sqrt(l/g)*f) == 0
+
+    # small angle assumption
+    # https://www.acs.psu.edu/drussell/Demos/Pendulum/Pendulum.html
+    # https://brilliant.org/wiki/small-angle-approximation/#:~:text=The%20small%2Dangle%20approximation%20is,tan%20%E2%81%A1%20%CE%B8%20%E2%89%88%20%CE%B8%20.
 
