@@ -115,9 +115,9 @@ def pi_groups(variables: Variables,
     # independent variable product groups, with v_i being the exponent of the
     # i-th variable.
     dm = dimensional_matrix(vdims, dimsys=dimsys)
-    nullity = dm.nullspace()
+    nspace = dm.nullspace()
     groups = []
-    for nv in nullity:
+    for nv in nspace:
         generator = zip(vsyms, nv)
         first = next(generator)
         pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
