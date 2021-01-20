@@ -4,6 +4,7 @@
 \usepackage{cite}
 \usepackage{listings}
 \usepackage{graphicx}
+\usepackage{minted}
 
 \title{sympy-nondim}
 \date{}
@@ -11,7 +12,7 @@
 \begin{document}
 \maketitle
 
-\section{sympy-nondim}
+\section{Introduction}
 This Python package addresses physical dimensional analysis. In particular, \texttt{sympy-nondim} calculates from an unknown relation of (dimensional) variables, a new relation of (usually fewer) dimensionless variables.
 
 \subsection{Pendulum Example}
@@ -27,11 +28,9 @@ Using dimensional analysis we can a) reduce the number of experiments and b) gai
 
 \subsubsection{Problem setup}
 In the pendulum case we first define the relevant symbols, their dimensions, and define the abstract equation we would like to analyze.
-\begin{lstlisting}[language=Python]
+\begin{minted}{python}
 import sympy
 from sympy.physics import units
-
-import nondim
 
 dimmap = {
     t:units.time, 
@@ -43,28 +42,35 @@ dimmap = {
 
 eq = sympy.Eq(t, sympy.Function('f')(m,l,g,theta))
 print(sympy.latex(eq))
-\end{lstlisting}
-Which prints $$t = f{\left(m,l,g,\theta \right)}.$$
+\end{minted}
+$$t = f{\left(m,l,g,\theta \right)}.$$
 
 \subsubsection{Result}
 Next, we apply dimensional analysis
-\begin{lstlisting}[language=Python]
+\begin{minted}{python}
+import nondim
+
 r = nondim.nondim(eq, dimmap)
 print(sympy.latex(r))
-\end{lstlisting}
-Which returns a new equation $$\sqrt{\frac{g}{l}}t = F{\left(\theta \right)}.$$ Note, that the LHS is a dimensionless product as well as the argument to the function $F$ on the RHS. Solving for $t$ yields
-\begin{lstlisting}[language=Python]
+\end{minted}
+Which returns a new equation
+\begin{equation}
+    \sqrt{\frac{g}{l}}t = F{\left(\theta \right)}. \label{eq:A}
+\end{equation} Note, all variable products appearing on the LHS and RHS are dimensionless. Solving for $t$ yields
+\begin{minted}{python}
 f = sympy.Eq(t, sympy.solve(r, t)[0])
 print(sympy.latex(f))
-\end{lstlisting}
-giving $$t = \sqrt{\frac{l}{g}}F{\left(\theta \right)}.$$ Dimensional analysis provides us with the following insights
+\end{minted}
+$$t = \sqrt{\frac{l}{g}}F{\left(\theta \right)}.$$ 
+
+Dimensional analysis provided us with the following insights
 \begin{enumerate}
     \item The mass $m$ is irrelevant in the given problem.
-    \item There is no need to consider an unknown function $f$ of four variables, instead we can reduce our search to unknown function $F$ of a single variable ( initial release angle $\theta$).
+    \item There is no need to consider an unknown function $f$ of four independent variables, instead we can reduce the search to unknown function $F$ of a single variable (initial release angle $\theta$). Few experiments according to Equation~\ref{eq:A} will quickly reveal that $F(\theta)=2\pi$ for small angles.
     \item Keeping $F{\left(\theta \right)}$ constant, the period $t$ is proportional to $\sqrt{\frac{l}{g}}$.
 \end{enumerate}
 
-to learn more about dimensional analysis and how it might be helpful, consider \cite{szirtes2007applied, santiago2019first, sonin2001dimensional, lemons2017student,schetz1999fundamentals}. The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in \cite{szirtes2007applied}. The method implemented here frames the problem in linear algebra terms, see \texttt{buckpi.py} for details.
+To learn more about dimensional analysis and how it might be helpful, consider \cite{szirtes2007applied, santiago2019first, sonin2001dimensional, lemons2017student,schetz1999fundamentals}. The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in \cite{szirtes2007applied}. The method implemented here frames the problem in linear algebra terms, see \texttt{buckpi.py} for details.
 
 \subsection{References}
 \bibliographystyle{alpha}
@@ -74,5 +80,3 @@ to learn more about dimensional analysis and how it might be helpful, consider \
 \endgroup
 
 \end{document}
-
-%pandoc --citeproc -s README.tex -o README.md --to markdown_strict
