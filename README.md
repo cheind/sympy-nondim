@@ -1,3 +1,4 @@
+[![Build Status](https://www.travis-ci.com/cheind/sympy-nondim.svg?branch=develop)](https://www.travis-ci.com/cheind/sympy-nondim)
 # sympy-nondim
 
 This Python package addresses physical dimensional analysis. In
