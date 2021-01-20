@@ -5,9 +5,12 @@
 \usepackage{listings}
 \usepackage{graphicx}
 \usepackage{minted}
+\usepackage{url}
+\usepackage{hyperref}
 
 \title{sympy-nondim}
-\date{}
+\author{Christoph Heindl \\ \url{https://github.com/cheind} }
+\date{\today}
 
 \begin{document}
 \maketitle
@@ -20,7 +23,7 @@ Suppose that you are asked to find an equation for the period of a simple fricti
 \begin{center}
 \includegraphics[width=0.3\textwidth]{pendulum.png}
 \end{center}
-Hence, you need to find an unknown relation $$t = f(l,m,g,\theta).$$ You plan to carry out experiments to study the value of $t$ for different values of all the independent variables in various combinations. Assuming $N$ values per variable, you will perform on the order of $N^4 = 10000$ experiments. 
+Hence, you need to find an unknown relation $$t = f(l,m,g,\theta).$$ You plan to carry out experiments to study the value of $t$ for different values of all the independent variables in various combinations. Assuming $N$ values per variable, you will perform on the order of $N^4$, i.e $10,000$ experiments when $N=10$. 
 
 Using dimensional analysis we can a) reduce the number of experiments and b) gain insights into the unknown functional relationship of the variables. Dimensional analysis applies the principle dimensional homogeneity to manipulate a functional relationship of dimensional variables $$y = f(a,b,c,...)$$ into a new function $F$ of (usually fewer) nondimensional variables $$Y = F(A,B...).$$
 
@@ -30,6 +33,7 @@ In the pendulum case we first define the relevant symbols, their dimensions, and
 import sympy
 from sympy.physics import units
 
+t, m, l, g, theta = sympy.symbols('t m l g theta')
 dimmap = {
     t:units.time, 
     m:units.mass, 
