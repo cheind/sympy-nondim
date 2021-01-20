@@ -3,7 +3,7 @@ from sympy.physics.units import Dimension
 import sympy.physics.units as units
 import sympy.physics.units.systems.si as si
 
-from ..buckpi import nondim, nondim_eq
+from ..buckpi import nondim, nondim_eq, nondim_eq2
 from .. import utils as u
 
 
@@ -118,6 +118,47 @@ def test_pendulum_swing_eq():
     print(units.time.name in eq.lhs.free_symbols)
     print(nondim_eq(eq))
     print(sympy.solve(nondim_eq(eq), units.time.name)[0])
+
+    # small angle assumption
+    # https://www.acs.psu.edu/drussell/Demos/Pendulum/Pendulum.html
+    # https://brilliant.org/wiki/small-angle-approximation/#:~:text=The%20small%2Dangle%20approximation%20is,tan%20%E2%81%A1%20%CE%B8%20%E2%89%88%20%CE%B8%20.
+
+
+def test_pendulum_swing_eq2():
+    # Taken from "A Student’s Guide to Dimensional Analysis" pp. ix
+
+    # m,l,g,t = sympy.symbols('m l g t', real=True, positive=True)
+    # theta = sympy.symbols('theta', real=True)
+
+    # sdict = {
+    #     m:units.mass,           # its mass (actually will turn out to be superfluous)
+    #     l:units.length,         # length of pendulum
+    #     g:units.acceleration,   # accel of gravity
+    #     theta:Dimension(1),     # max angle
+    #     t:units.time            # period
+    # }
+    # gs = nondim(sdict)
+    # f = sympy.Function('f')(gs[0])
+    # eq = sympy.Eq(gs[1], f)
+    # print(eq)
+    # seq = sympy.Eq(t, sympy.solve(eq, t)[0])
+
+    # assert seq.lhs == t
+    # assert not m in seq.rhs.free_symbols
+    # assert sympy.expand(seq.rhs - sympy.sqrt(l/g)*f) == 0
+
+    t,m,l,g,theta = sympy.symbols('t m l g theta')
+    eq = sympy.Eq(t, sympy.Function('f')(m,l,g,theta))
+    r = nondim_eq2(eq, {t:units.time, m:units.mass, l:units.length, g:units.acceleration, theta:units.Dimension(1)})
+    print(r)
+    print(r.subs({t:units.time, m:units.mass, l:units.length, g:units.acceleration, theta:units.Dimension(1)}))
+
+    # eq = sympy.Eq(units.time, sympy.Function('f')(
+    #     units.mass, units.length, units.acceleration, units.Dimension(1, 'theta')))
+
+    # print(units.time.name in eq.lhs.free_symbols)
+    # print(nondim_eq(eq))
+    # print(sympy.solve(nondim_eq(eq), units.time.name)[0])
 
     # small angle assumption
     # https://www.acs.psu.edu/drussell/Demos/Pendulum/Pendulum.html

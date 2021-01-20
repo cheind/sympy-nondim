@@ -163,3 +163,48 @@ def nondim_eq(eq: Eq, dimsys: units.DimensionSystem = None) -> Function:
             return Eq(deps[0], Function('F')(*indeps))
 
     return groups
+
+
+
+def nondim_eq2(
+        eq: Eq, 
+        dimmap: Mapping[Symbol, units.Dimension],
+        dimsys: units.DimensionSystem = None) -> Expr:
+
+    # Evaluate the lhs/rhs dimensions
+    elhs = eq.lhs.subs(dimmap)
+    erhs = eq.rhs.subs(dimmap)
+
+    # Create dimensional matrix, treating the lhs as the dependent dimension
+    vs = [*eq.rhs.args] + [eq.lhs]
+    vdims = [*erhs.args] + [elhs]
+    dm = _dimensional_matrix(vdims, dimsys=dimsys)
+
+    # Solve for the nullspace
+    nspace = dm.nullspace()
+
+    # Build groups of variables (expr)
+    groups = []
+    for nv in nspace:
+        generator = zip(vs, nv)
+        first = next(generator)
+        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
+                    first[0]**first[1])
+        groups.append(pi)
+
+    # Create result from product groups
+    ng = len(groups)
+    if ng == 0:
+        raise ValueError('No relation could be found.')
+    elif ng == 1:
+        return Eq(Symbol('C', constant=True), groups[0])
+    else:
+        # Search for first term that includes the original dependent variable
+        deps = [g for g in groups if eq.lhs in g.free_symbols]
+        indeps = [g for g in groups if eq.lhs not in g.free_symbols]
+        if len(deps) == 0 or len(deps) > 1:
+            return Function('F')(*deps, *indeps)
+        else:
+            return Eq(deps[0], Function('F')(*indeps))
+
+    # return groups
