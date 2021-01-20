@@ -1,3 +1,4 @@
+import pytest
 import sympy
 from sympy.physics.units import Dimension
 import sympy.physics.units as units
@@ -23,6 +24,24 @@ def test_pi_groups():
     assert len(g) == 2
     assert u.is_dimensionless(g[0], dimsys)
     assert u.is_dimensionless(g[1], dimsys)
+
+def test_no_relation():
+    a,b = sympy.symbols('a b')
+    with pytest.raises(ValueError):
+        nondim(sympy.Eq(a,sympy.Function('f')(b)), {a:units.time, b:units.length})
+        
+def test_dependent_irrelevant():
+    a,b,c,d = sympy.symbols('a b c d')
+    r = nondim(
+        sympy.Eq(a,sympy.Function('f')(b,c,d)), 
+        {a:units.time, b:units.length, c:units.length, d:Dimension(1)}
+    )
+    assert isinstance(r, sympy.Function)
+    assert any([
+        r.args == (b/c, d),
+        r.args == (c/b, d),
+        r.args == (d, b/c),
+        r.args == (d, c/b)])
 
 def test_sphere_drag():
     # Taken from "A First Course in Dimensional Analysis:
