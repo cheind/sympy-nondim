@@ -10,7 +10,7 @@ from sympy import Symbol, Expr, Eq, Function
 
 
 def _dimensional_matrix(
-        vdims: Sequence[units.Dimension],
+        sdims: Sequence[units.Dimension],
         dimsys: units.DimensionSystem = None) -> matrices.Matrix:
     '''Returns the dimensional matrix from the given variables.
 
@@ -19,7 +19,7 @@ def _dimensional_matrix(
 
     Params
     ------
-    vdims: Sequence[units.Dimension]
+    sdims: Sequence[units.Dimension]
         A sequence of sympy.physics.units.Dimension representing the possibly
         (derived) dimensions of each variable.
     dimsys: units.DimensionSystem, optional
@@ -36,12 +36,12 @@ def _dimensional_matrix(
 
     # Form a sparse set of represented dimensions (non-zero)
     # ddict is List[Dict[str, float]]
-    ddict = [dimsys.get_dimensional_dependencies(v) for v in vdims]
+    ddict = [dimsys.get_dimensional_dependencies(v) for v in sdims]
     basedims = list(set(it.chain(*[dd.keys() for dd in ddict])))
 
     # Build the Nd x Nv dimensional matrix M with Mij being the exponent
     # of the j-th variable in the i-th base dimension.
-    Nv = len(vdims)
+    Nv = len(sdims)
     Nd = len(basedims)
     dm = matrices.zeros(Nd, Nv)
     for vid, dd in enumerate(ddict):
@@ -50,14 +50,41 @@ def _dimensional_matrix(
 
     return dm
 
+def pi_groups(
+        sdims: Sequence[units.Dimension],
+        syms: Sequence[Symbol] = None,
+        dimsys: units.DimensionSystem = None
+    ) -> Sequence[Expr]:
 
-Variables = Union[Mapping[Symbol, units.Dimension], Sequence[units.Dimension]]
+    # Form the dimensional matrix from the given symbol dimensions
+    dm = _dimensional_matrix(sdims, dimsys=dimsys)
+
+    # Solve for the nullspace
+    nspace = dm.nullspace()
+
+    if syms is None:
+        syms = sdims
+
+    # Build groups of variables (expr)
+    # When symbols are specified this builds a sequence
+    # of expression consisting of symbols, otherwise
+    # Dimensions in sdims are used.
+    groups = []
+    for nv in nspace:
+        generator = zip(syms, nv)
+        first = next(generator)
+        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
+                    first[0]**first[1])
+        groups.append(pi)
+    return groups
+
 
 
 def nondim(
-        variables: Variables,
-        dimsys: units.DimensionSystem = None) -> Sequence[Expr]:
-    '''Returns all independent dimensionless variable products
+        eq: Eq, 
+        dimmap: Mapping[Symbol, units.Dimension],
+        dimsys: units.DimensionSystem = None) -> Expr:
+    '''Computes a dimensionless form of the given equation.
 
     This method is based on the Buckingham-Pi theoreom and treats non-dimensionalization in terms of linear algebra.
 
@@ -86,113 +113,41 @@ def nondim(
 
     Params
     ------
-    variables: Variables
-        Either a sequence of sympy.physics.units.Dimension or a map from symbols to sympy.physics.units.Dimension.
-    dimsys: units.DimensionSystem, optional
+    eq: sympy.Eq
+        Equation that relates the dependent variable to an unspecified sympy.Function of independent variables.
+    dimmap: Mapping[Symbol, units.Dimension]
+        A mapping from symbols in `eq` to their corresponding sympy.physics.units.Dimension
+    dimsys: sympy.physics.units.DimensionSystem, optional
         The associated sympy.physics.units.DimensionSystem. If not specified,
         `dimsys_default` is used.
 
+    Raises
+    ------
+    ValueError:
+        When the number of independent dimensionless products is zero.
+
     Returns
     -------
-    pi: Sequence[Expr]
-        Sequence of expressions representing independent variable products.
+    expr: sympy.Expr
+        The solution of dimensional analysis, depending on the number N of dimensionless products {gi}_i<=N
+            - N=0: see Raises
+            - N=1: sympy.Eq(g0,C) where C is an unknown constant
+            - N>1 & dep. variable appears only in gj: sympy.Eq(gj, sympy.Function({gi|i!=j}))
+            - otherwise: sympy.Function({gi})
     '''
-    vsyms = None
-    vdims = None
-    if isinstance(variables, abc.Mapping):
-        vsyms = variables.keys()
-        vdims = variables.values()
-    elif isinstance(variables, abc.Sequence):
-        vdims = list(variables)
-        vsyms = vdims
-    else:
-        raise ValueError(
-            'Variables argument needs to be Mapping or Sequence type.')
-
-    if len(variables) == 0:
-        raise ValueError('Need at least one variable.')
-
-    # The nullity of the dimensional matrix {v|Av=0} represents all possible
-    # independent variable product groups, with v_i being the exponent of the
-    # i-th variable.
-    dm = _dimensional_matrix(vdims, dimsys=dimsys)
-    nspace = dm.nullspace()
-    groups = []
-    for nv in nspace:
-        generator = zip(vsyms, nv)
-        first = next(generator)
-        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
-                    first[0]**first[1])
-        groups.append(pi)
-    return groups
-
-
-def nondim_eq(eq: Eq, dimsys: units.DimensionSystem = None) -> Function:
-    if not isinstance(eq.lhs, units.Dimension):
-        raise ValueError('LHS of equation needs to be dimension')
-    if not isinstance(eq.rhs, Function):
-        raise ValueError(
-            'RHS needs to be unknown function of physical dimensions.')
-    if not all([isinstance(a, units.Dimension) for a in eq.rhs.args]):
-        raise ValueError(
-            'RHS needs to be unknown function of physical dimensions.')
-    vdims = [*eq.rhs.args] + [eq.lhs]  # left-hand-side last
-    dm = _dimensional_matrix(vdims, dimsys=dimsys)
-    nspace = dm.nullspace()
-
-    groups = []
-    for nv in nspace:
-        generator = zip(vdims, nv)
-        first = next(generator)
-        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
-                    first[0]**first[1])
-        groups.append(pi)
-
-    np = len(groups)
-    if np == 0:
-        return 0
-    elif np == 1:
-        return Eq(Symbol('C', constant=True), groups[0].name)
-    else:
-        # Search for first term that includes the original dependent variable
-        deps = [g.name for g in groups if eq.lhs.name in g.free_symbols]
-        indeps = [g.name for g in groups if eq.lhs.name not in g.free_symbols]
-        if len(deps) == 0 or len(deps) > 1:
-            return Eq(Symbol('C', constant=True), Function('F')(*deps, *indeps))
-        else:
-            return Eq(deps[0], Function('F')(*indeps))
-
-    return groups
-
-
-
-def nondim_eq2(
-        eq: Eq, 
-        dimmap: Mapping[Symbol, units.Dimension],
-        dimsys: units.DimensionSystem = None) -> Expr:
 
     # Evaluate the lhs/rhs dimensions
     elhs = eq.lhs.subs(dimmap)
     erhs = eq.rhs.subs(dimmap)
 
     # Create dimensional matrix, treating the lhs as the dependent dimension
-    vs = [*eq.rhs.args] + [eq.lhs]
-    vdims = [*erhs.args] + [elhs]
-    dm = _dimensional_matrix(vdims, dimsys=dimsys)
+    syms = [*eq.rhs.args] + [eq.lhs]
+    sdims = [*erhs.args] + [elhs]
 
-    # Solve for the nullspace
-    nspace = dm.nullspace()
-
-    # Build groups of variables (expr)
-    groups = []
-    for nv in nspace:
-        generator = zip(vs, nv)
-        first = next(generator)
-        pi = reduce(lambda t, ve: t * (ve[0]**ve[1]), generator,
-                    first[0]**first[1])
-        groups.append(pi)
-
-    # Create result from product groups
+    # Compute lin. independent dimensionless products
+    groups = pi_groups(sdims, syms, dimsys)
+    
+    # Determine result from groups
     ng = len(groups)
     if ng == 0:
         raise ValueError('No relation could be found.')
@@ -206,5 +161,3 @@ def nondim_eq2(
             return Function('F')(*deps, *indeps)
         else:
             return Eq(deps[0], Function('F')(*indeps))
-
-    # return groups
