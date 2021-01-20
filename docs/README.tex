@@ -3,50 +3,68 @@
 \usepackage{lmodern}
 \usepackage{cite}
 \usepackage{listings}
+\usepackage{graphicx}
 
-\title{py-dimensional-analysis}
+\title{sympy-nondim}
 \date{}
 
 \begin{document}
 \maketitle
 
-\section{py-dimensional-analysis}
-This Python package addresses physical dimensional analysis. In particular, \texttt{py-dimensional-analysis} calculates from a given system of (dimensional) variables those products that yield a desired target dimension.
+\section{sympy-nondim}
+This Python package addresses physical dimensional analysis. In particular, \texttt{sympy-nondim} calculates from an unknown relation of (dimensional) variables, a new relation of (usually fewer) dimensionless variables.
 
-% \begin{equation}
-%     y = A^aB^bC_c
-% \end{equation}
+\subsection{Pendulum Example}
+Suppose that you are asked to find an equation for the period of a simple frictionless pendulum (example taken from \cite{lemons2017student}). Unaware of the solution, you may assume that the period $t$ of the pendulum depends somehow on the (massless) string length $l$, the point mass $m$, the initial release angle $\theta$ and gravitational acceleration $g$ as shown in the following diagram.
 
-The following example illustrates how the variables mass, force, time and pressure must relate to each other in order to produce the dimension length*time.
+\begin{center}
+\includegraphics[width=0.3\textwidth]{pendulum.png}
+\end{center}
 
+Hence, we need to find relation of the following form $$t = f(l,m,g,\theta).$$ To find the functional relation, we apply a brute force method: we set up experiments to study the value of $t$ for values of the independent variables in all combinations. Assuming $N$ values per variable, requires us perform on the order of $N^4 = 10000$ experiments.
+
+Using dimensional analysis we can a) reduce the number of experiments and b) gain insights into the unknown functional relationship of the variables. Dimensional analysis applies the principle dimensional homogeneity to manipulate a functional relationship of dimensional variables $$y = f(a,b,c,...)$$ into a new function $F$ of (usually fewer) nondimensional variables $$Y = F(A,B...).$$
+
+\subsubsection{Problem setup}
+In the pendulum case we first define the relevant symbols, their dimensions, and define the abstract equation we would like to analyze.
 \begin{lstlisting}[language=Python]
-import danalysis as da
+import sympy
+from sympy.physics import units
 
-si = da.standard_systems.SI         # predefined standard units
-s = da.Solver(
-    {
-        'a' : si.M,                 # [a] is mass
-        'b' : si.L*si.M*si.T**-2,   # [b] is force (alt. si.F)
-        'c' : si.T,                 # [c] is time
-        'd' : si.Pressure           # [d] is pressure
-    },
-    si.L*si.T                       # target dimension
-)
-\end{lstlisting}
-Which prints
-\begin{lstlisting}
-Found 2 variable products of variables
-{
-        a:Q(M),
-        b:Q(L*M*T**-2),
-        c:Q(T),
-        d:Q(L**-1*M*T**-2)
-}, each of dimension L*T:
-        1: [a*c**-1*d**-1] = L*T
-        2: [b**0.5*c*d**-0.5] = L*T
-\end{lstlisting}
+import nondim
 
-This library is based on \cite{szirtes2007applied}, and also incorporates examples from \cite{santiago2019first, sonin2001dimensional, lemons2017student,schetz1999fundamentals}
+dimmap = {
+    t:units.time, 
+    m:units.mass, 
+    l:units.length, 
+    g:units.acceleration, 
+    theta:units.Dimension(1)
+}
+
+eq = sympy.Eq(t, sympy.Function('f')(m,l,g,theta))
+print(sympy.latex(eq))
+\end{lstlisting}
+Which prints $$t = f{\left(m,l,g,\theta \right)}.$$
+
+\subsubsection{Result}
+Next, we apply dimensional analysis
+\begin{lstlisting}[language=Python]
+r = nondim.nondim(eq, dimmap)
+print(sympy.latex(r))
+\end{lstlisting}
+Which returns a new equation $$\sqrt{\frac{g}{l}}t = F{\left(\theta \right)}.$$ Note, that the LHS is a dimensionless product as well as the argument to the function $F$ on the RHS. Solving for $t$ yields
+\begin{lstlisting}[language=Python]
+f = sympy.Eq(t, sympy.solve(r, t)[0])
+print(sympy.latex(f))
+\end{lstlisting}
+giving $$t = \sqrt{\frac{l}{g}}F{\left(\theta \right)}.$$ Dimensional analysis provides us with the following insights
+\begin{enumerate}
+    \item The mass $m$ is irrelevant in the given problem.
+    \item There is no need to consider an unknown function $f$ of four variables, instead we can reduce our search to unknown function $F$ of a single variable ( initial release angle $\theta$).
+    \item Keeping $F{\left(\theta \right)}$ constant, the period $t$ is proportional to $\sqrt{\frac{l}{g}}$.
+\end{enumerate}
+
+to learn more about dimensional analysis and how it might be helpful, consider \cite{szirtes2007applied, santiago2019first, sonin2001dimensional, lemons2017student,schetz1999fundamentals}. The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in \cite{szirtes2007applied}. The method implemented here frames the problem in linear algebra terms, see \texttt{buckpi.py} for details.
 
 \subsection{References}
 \bibliographystyle{alpha}
