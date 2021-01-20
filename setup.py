@@ -6,14 +6,14 @@ THISDIR = Path(__file__).parent
 with open(THISDIR/'requirements.txt') as f:
     required = f.read().splitlines()
 
-with open(THISDIR/'Readme.md', encoding='utf-8') as f:
+with open(THISDIR/'README.md', encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
     name="sympy-nondim",
     author='Christoph Heindl',
     description='Non-dimensionalization of physical variables in sympy', 
-    url='https://github.com/cheind/py-dimensional-analysis',
+    url='https://github.com/cheind/sympy-nondim/',
     license='MIT',
     long_description=long_description,
     long_description_content_type='text/markdown',
