@@ -1,43 +1,42 @@
-# py-dimensional-analysis
+# sympy-nondim
 
 This Python package addresses physical dimensional analysis. In
-particular, `py-dimensional-analysis` calculates from a given system of
-(dimensional) variables those products that yield a desired target
-dimension.
+particular, `sympy-nondim` calculates from an unknown relation of
+(dimensional) variables, a new relation of (usually fewer) dimensionless
+variables.
 
-The following example illustrates how the variables mass, force, time
-and pressure must relate to each other in order to produce the dimension
-length\*time.
+See [nondim-sympy.pdf](docs/nondim-sympy.pdf) for a detailed introduction. 
 
 ``` python
-import danalysis as da
+import sympy
+from sympy.physics import units
 
-si = da.standard_systems.SI         # predefined standard units
-s = da.Solver(
-    {
-        'a' : si.M,                 # [a] is mass
-        'b' : si.L*si.M*si.T**-2,   # [b] is force (alt. si.F)
-        'c' : si.T,                 # [c] is time
-        'd' : si.Pressure           # [d] is pressure
-    },
-    si.L*si.T                       # target dimension
-)
+import nondim
+
+# Potentially relevent variables
+t, m, l, g, theta = sympy.symbols('t m l g theta')
+# and associated dimensions
+dimmap = {
+    t:units.time, 
+    m:units.mass, 
+    l:units.length, 
+    g:units.acceleration, 
+    theta:units.Dimension(1)
+}
+
+# Setup an general equation, informing dimensional analysis
+# of dependent and independent variables.
+eq = sympy.Eq(t, sympy.Function('f')(m,l,g,theta))
+
+# Perform dimensional analysis which returns a new (reduced) 
+# expr. of dimensionless variables
+r = nondim.nondim(eq, dimmap)
+
+print(sympy.latex(r))
+# \frac{\sqrt{g} t}{\sqrt{l}} = F{\left(\theta \right)}
 ```
 
-Which prints
-
-    Found 2 variable products of variables
-    {
-            a:Q(M),
-            b:Q(L*M*T**-2),
-            c:Q(T),
-            d:Q(L**-1*M*T**-2)
-    }, each of dimension L*T:
-            1: [a*c**-1*d**-1] = L*T
-            2: [b**0.5*c*d**-0.5] = L*T
-
-This library is based on (Szirtes 2007), and also incorporates examples
-from (Santiago 2019; Sonin 2001; Lemons 2017; Schetz and Fuhs 1999)
+The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in (Szirtes 2007). The method implemented here frames the problem in linear algebra terms, see [buckpi.py](nondim/buckpi.py) for details.
 
 ## References
 
