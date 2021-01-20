@@ -39,6 +39,8 @@ print(sympy.latex(r))
 
 The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in (Szirtes 2007). The method implemented here frames the problem in linear algebra terms, see [buckpi.py](nondim/buckpi.py) for details.
 
+In case you are interested in solving for particular dimensions you might be interested in [py-dimensional-analysis](https://github.com/cheind/py-dimensional-analysis).
+
 ## References
 
 <div id="refs" class="references csl-bib-body hanging-indent">
