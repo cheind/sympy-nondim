@@ -64,13 +64,13 @@ f = sympy.Eq(t, sympy.solve(r, t)[0])
 print(sympy.latex(f))
 \end{minted}
 $$t = \sqrt{\frac{l}{g}}F{\left(\theta \right)}.$$ 
-
-Dimensional analysis provided us with the following insights
+Dimensional analysis provides us with the following valuable insights
 \begin{enumerate}
     \item The mass $m$ is irrelevant in the given problem.
     \item There is no need to consider an unknown function $f$ of four independent variables, instead we can reduce the search to unknown function $F$ of a single variable (initial release angle $\theta$). Few experiments according to Equation~\ref{eq:A} will quickly reveal that $F(\theta)=2\pi$ for small angles.
     \item Keeping $F{\left(\theta \right)}$ constant, the period $t$ is proportional to $\sqrt{\frac{l}{g}}$.
 \end{enumerate}
+This is as far as dimensional analysis can get us. 
 
 To learn more about dimensional analysis and how it might be helpful, consider \cite{szirtes2007applied, santiago2019first, sonin2001dimensional, lemons2017student,schetz1999fundamentals}. The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in \cite{szirtes2007applied}. The method implemented here frames the problem in linear algebra terms, see \texttt{buckpi.py} for details.
 
