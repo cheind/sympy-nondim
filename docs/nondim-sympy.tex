@@ -17,12 +17,10 @@ This Python package addresses physical dimensional analysis. In particular, \tex
 
 \subsection{Pendulum Example}
 Suppose that you are asked to find an equation for the period of a simple frictionless pendulum (example taken from \cite{lemons2017student}). Unaware of the solution, you may assume that the period $t$ of the pendulum depends somehow on the (massless) string length $l$, the point mass $m$, the initial release angle $\theta$ and gravitational acceleration $g$ as shown in the following diagram.
-
 \begin{center}
 \includegraphics[width=0.3\textwidth]{pendulum.png}
 \end{center}
-
-Hence, we need to find relation of the following form $$t = f(l,m,g,\theta).$$ To find the functional relation, we apply a brute force method: we set up experiments to study the value of $t$ for values of the independent variables in all combinations. Assuming $N$ values per variable, requires us perform on the order of $N^4 = 10000$ experiments.
+Hence, you need to find relation $$t = f(l,m,g,\theta).$$ So, you plan to carry out experiments to study the value of $t$ for different values of the independent variables in all combinations. Assuming $N$ values per variable, requires you perform on the order of $N^4 = 10000$ experiments.
 
 Using dimensional analysis we can a) reduce the number of experiments and b) gain insights into the unknown functional relationship of the variables. Dimensional analysis applies the principle dimensional homogeneity to manipulate a functional relationship of dimensional variables $$y = f(a,b,c,...)$$ into a new function $F$ of (usually fewer) nondimensional variables $$Y = F(A,B...).$$
 
