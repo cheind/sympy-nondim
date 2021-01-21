@@ -152,12 +152,21 @@ def nondim(
     if ng == 0:
         raise ValueError('No relation could be found.')
     elif ng == 1:
+        # See: Dimensional Analysis: Michael J. Kirby and Gerhard Dangelmayr
+        # Class Notes, Dimensional Analysis Revised Sep 21, 2003
+        # Also: Theorem (7-34), APPLIED DIMENSIONAL ANALYSIS AND MODELING       
         return Eq(Symbol('C', constant=True), groups[0])
     else:
         # Search for first term that includes the original dependent variable
         deps = [g for g in groups if eq.lhs in g.free_symbols]
         indeps = [g for g in groups if eq.lhs not in g.free_symbols]
         if len(deps) == 0 or len(deps) > 1:
+            # Either the dependent variable was not relevant to the problem,
+            # or it was not a free variable and appears in multiple terms.
             return Function('F')(*deps, *indeps)
         else:
+            # Assume we can solve for pi_i in f(pi_0, pi_1, ...)
+            # See Michael J. Kirby and Gerhard Dangelmayr
+            # Class Notes, Dimensional Analysis Revised Sep 21, 2003
+            # and implicit function theorem
             return Eq(deps[0], Function('F')(*indeps))
