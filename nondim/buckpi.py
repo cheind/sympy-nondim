@@ -168,5 +168,6 @@ def nondim(
             # Assume we can solve for pi_i in f(pi_0, pi_1, ...)
             # See Michael J. Kirby and Gerhard Dangelmayr
             # Class Notes, Dimensional Analysis Revised Sep 21, 2003
-            # and implicit function theorem
+            # and implicit function theorem: 
+            # https://www.math.ucla.edu/~archristian/teaching/32a-f16/implicit-function-theorem.pdf
             return Eq(deps[0], Function('F')(*indeps))
