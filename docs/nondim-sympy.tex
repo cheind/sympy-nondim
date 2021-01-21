@@ -110,7 +110,7 @@ where $\text{dim}(\cdot)$ yields the vector representation of the physical dimen
 \end{equation}
 which we simplify in terms of a matrix-vector product
 \begin{equation}
-    \begin{pmatrix} \mathbf{D}\mathbf{v} = \text{dim}(x) & \text{dim}(y) & \text{dim}(z)\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix},
+    \mathbf{D}\mathbf{v} =\begin{pmatrix}\text{dim}(x) & \text{dim}(y) & \text{dim}(z)\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix},
 \end{equation}
 where $\mathbf{D}$ is the $N_k \times N_v$ dimensional matrix.
 
@@ -118,7 +118,7 @@ Determining $\Pi$ becomes equivalent to the problem of finding a set of vectors 
 \begin{equation}
     \mathbf{D}\mathbf{v}=\mathbf{0}.
 \end{equation}
-The set of vectors $\{\mathbf{v}|\mathbf{D}\mathbf{v}=\mathbf{0}\}$ span a sub-space of the domain of the linear map $\mathbf{D}$: the null-space. The dimensionality of the null-space is given by the rank-nullity theorem
+The set of vectors $\{\mathbf{v} \mid \mathbf{D}\mathbf{v}=\mathbf{0}\}$ span a sub-space of the domain of the linear map $\mathbf{D}$: the null-space. The dimensionality of the null-space is given by the rank-nullity theorem
 \begin{equation}
     N_p = N_v - \text{rank}(\mathbf{M}) = \text{nullity}(\mathbf{M}) = |\Pi|,
 \end{equation}
