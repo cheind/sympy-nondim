@@ -99,22 +99,24 @@ where the values of the scalars $\left\{m,l,t\right\}$ depend variable dimension
     \left[g\right] = M^0L^1T^{-2}.
 \end{equation}
 
-\subsection{Determining $\Pi$}
-Dimensions form an abelian group under multiplication. This allows us to treat physical dimensions as a $N_k$-vector space, whose basis is spanned by the unit directions $\mathbf{e}$ corresponding to base physical dimensions. Continuing the above example we have $\mathbf{e}_M=(1,0,0)^T,$ $\mathbf{e}_L=(1,0,0)^T,$ and $\mathbf{e}_T=(0,0,1)^T$. Vector addition corresponds to dimensional multiplication and scalar multiplication to raising a dimension to a specific power. That is, we may rewrite Equation~\ref{eq:xinmlt} as 
-\begin{equation}
-    \text{dim}(x)= m\mathbf{e}_M + l\mathbf{e}_L + t\mathbf{e}_T = (0,1,-2)^T,
-\end{equation}
-where $\text{dim}(\cdot)$ yields the vector representation of the physical dimension of the given variable. Notice, the above equations allows us to express Equation~\ref{eq:pi} as
-\begin{equation}
-    \alpha_i\text{dim}(x) + \beta_i\text{dim}(y) + \gamma_i\text{dim}(z) = \mathbf{0},
-\end{equation}
-which we simplify in terms of a matrix-vector product
-\begin{equation}
-    \mathbf{D}\mathbf{v} =\begin{pmatrix}\text{dim}(x) & \text{dim}(y) & \text{dim}(z)\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix},
-\end{equation}
-where $\mathbf{D}$ is the $N_k \times N_v$ dimensional matrix.
+\subsection{Physical dimensions as vector spaces}
+Physical dimensions form a commutative (abelian) group $G$ under multiplication : if $M,L \in G$, then $M^m,L^l \in G,$ assuming $m,l \in \mathbb{Q}$ and also $M^m \times L^l \in G$. The identity is $1 = M^0$.
 
-Determining $\Pi$ becomes equivalent to the problem of finding a set of vectors $\mathbf{v}$ for which
+The group $G$ can be described as a vector space over the field of rational numbers, mapping $[x] = M^0L^1T^{-2}$ to $(0,1,-1)^T$. Dimensional multiplication corresponds then to vector addition and scalar multiplication to raising dimensional symbols to a rational power. The basis is spanned by $N_k$ canonical unit directions corresponding to the physical base dimensions. For example, mass $M$ is mapped to $(1,0,0)^T$ in a three-dimensional vector space associated with the base dimensions $MLT$. The origin $\mathbf{0}$ of the vector space $(0,0,0)^T$ corresponds to a dimensionless quantity.
+
+Using vector notation, we may rewrite Equation~\ref{eq:xinmlt}
+\begin{equation}
+    \alpha_i[x] + \beta_i[y] + \gamma_i[z] = \mathbf{0}, \label{eq:zeroeq}
+\end{equation}
+where we assume that $\left[\cdot\right]$ returns the vector space mapping of the variable's dimensions. 
+
+\subsection{Determining $\pi$}
+
+We may rewrite Equation~\ref{eq:zeroeq} as a matrix-vector product
+\begin{equation}
+    \mathbf{D}\mathbf{v} =\begin{pmatrix}[x] & [y] & [z]\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix} = \mathbf{0},
+\end{equation}
+where $\mathbf{D}$ is the $N_k \times N_v$ dimensional matrix. Hence, determining $\Pi$ becomes equivalent to the problem of finding a set of vectors $\mathbf{v}$ for which
 \begin{equation}
     \mathbf{D}\mathbf{v}=\mathbf{0}.
 \end{equation}
