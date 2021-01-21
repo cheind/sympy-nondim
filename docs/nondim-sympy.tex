@@ -18,7 +18,7 @@
 \section{Introduction}
 This Python package addresses physical dimensional analysis. In particular, \texttt{sympy-nondim} calculates from an unknown relation of (dimensional) variables, a new relation of (usually fewer) dimensionless variables.
 
-\subsection{Pendulum Example}
+\section{Example}
 Suppose that you are asked to find an equation for the period of a simple frictionless pendulum (example taken from \cite{lemons2017student}). Unaware of the solution, you may assume that the period $t$ of the pendulum depends somehow on the (massless) string length $l$, the point mass $m$, the initial release angle $\theta$ and gravitational acceleration $g$ as shown in the following diagram.
 \begin{center}
 \includegraphics[width=0.3\textwidth]{pendulum.png}
@@ -27,7 +27,7 @@ Hence, you need to find an unknown relation $$t = f(l,m,g,\theta).$$ You plan to
 
 Using dimensional analysis we can a) reduce the number of experiments and b) gain insights into the unknown functional relationship of the variables. Dimensional analysis applies the principle dimensional homogeneity to manipulate a functional relationship of dimensional variables $$y = f(a,b,c,...)$$ into a new function $F$ of (usually fewer) nondimensional variables $$Y = F(A,B...).$$
 
-\subsubsection{Problem setup}
+\subsection{Problem setup}
 In the pendulum case we first define the relevant symbols, their dimensions, and define the abstract equation we would like to analyze.
 \begin{minted}{python}
 import sympy
@@ -47,7 +47,7 @@ print(sympy.latex(eq))
 \end{minted}
 $$t = f{\left(m,l,g,\theta \right)}.$$
 
-\subsubsection{Result}
+\subsection{Result}
 Next, we apply dimensional analysis
 \begin{minted}{python}
 import nondim
@@ -72,6 +72,79 @@ Dimensional analysis provides us with the following valuable insights
 \end{enumerate}
 
 To learn more about dimensional analysis and how it might be helpful, consider \cite{szirtes2007applied, santiago2019first, sonin2001dimensional, lemons2017student,schetz1999fundamentals}. The method implemented in this library is based on the Buckingham-Pi theorem and the Rayleigh algorithm as explained in \cite{szirtes2007applied}. The method implemented here frames the problem in linear algebra terms, see \texttt{buckpi.py} for details.
+
+\section{Mathematical Notes}
+A dimensional equation of $N_v$ variables
+\begin{equation}
+    f(x_1,x_2,\ldots,x_{N_v-1}) = x_{N_v} \label{eq:fnc}
+\end{equation}
+is dimensionally homogeneous, if it can be written as
+\begin{equation}
+    g(\pi_1,\pi_2,\ldots,\pi_{N_p}) = 0.
+\end{equation}
+Here $\left\{\pi_1,\pi_2,\ldots,\pi_{N_p}\right\} = \Pi$ is a complete (and independent) set of $|\Pi|={N_p}$ dimensionless variable products. 
+
+Without loss of generality, consider 3 variables $x,y,z$. Letting $\left[\cdot\right]$ denote the dimension we require
+\begin{align}
+    \left[\pi_i\right] &= \left[x^{\alpha_i}y^{\beta_i}z^{\gamma_i} \right] \\
+    &=\left[x^{\alpha_i}\right]\left[y^{\beta_i}\right]\left[z^{\gamma_i}\right] \\
+    &=\left[x\right]^{\alpha_i}\left[y\right]^{\beta_i}\left[z\right]^{\gamma_i} = 1 \label{eq:pi}    
+\end{align}
+for unknown rational scalars $\left\{\alpha_i,\beta_i,\gamma_i\right\}.$ In a dimensional system, each dimension is defined as product of $N_k$ base-dimensions. Assuming base-dimensions mass $M$, length $L$ and time $T$, we write 
+\begin{equation}
+    \left[x\right] = M^mL^lT^t, \label{eq:xinmlt}
+\end{equation}
+where the values of the scalars $\left\{m,l,t\right\}$ depend variable dimension. For example, gravitational acceleration $g$ in the $MLT$-system is given by
+\begin{equation}
+    \left[g\right] = M^0L^1T^{-2}.
+\end{equation}
+
+\subsection{Determining $\Pi$}
+Dimensions form an abelian group under multiplication. This allows us to treat physical dimensions as a $N_k$-vector space, whose basis is spanned by the unit directions $\mathbf{e}$ corresponding to base physical dimensions. Continuing the above example we have $\mathbf{e}_M=(1,0,0)^T,$ $\mathbf{e}_L=(1,0,0)^T,$ and $\mathbf{e}_T=(0,0,1)^T$. Vector addition corresponds to dimensional multiplication and scalar multiplication to raising a dimension to a specific power. That is, we may rewrite Equation~\ref{eq:xinmlt} as 
+\begin{equation}
+    \text{dim}(x)= m\mathbf{e}_M + l\mathbf{e}_L + t\mathbf{e}_T = (0,1,-2)^T,
+\end{equation}
+where $\text{dim}(\cdot)$ yields the vector representation of the physical dimension of the given variable. Notice, the above equations allows us to express Equation~\ref{eq:pi} as
+\begin{equation}
+    \alpha_i\text{dim}(x) + \beta_i\text{dim}(y) + \gamma_i\text{dim}(z) = \mathbf{0},
+\end{equation}
+We may rewrite the above equation as a matrix-vector product
+\begin{equation}
+    \begin{pmatrix} \text{dim}(x) & \text{dim}(y) & \text{dim}(z)\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix} = \mathbf{D}\mathbf{v},
+\end{equation}
+where $\mathbf{D}$ is the $N_k \times N_v$ dimensional matrix.
+
+Determining $\Pi$ becomes equivalent to the problem of finding a set of vectors $\mathbf{v}$ for which
+\begin{equation}
+    \mathbf{D}\mathbf{v}=\mathbf{0}.
+\end{equation}
+The set of vectors $\{\mathbf{v}|\mathbf{D}\mathbf{v}=\mathbf{0}\}$ span a sub-space of the domain of the linear map $\mathbf{D}$: the null-space. The dimensionality of the null-space is given by the rank-nullity theorem
+\begin{equation}
+    N_p = N_v - \text{rank}(\mathbf{M}) = \text{nullity}(\mathbf{M}) = |\Pi|,
+\end{equation}
+and determines the number of independent dimensionless products. The span of the null-space is not unique and this leads potentially different set of $\Pi$. For practical purposes one should try to find a basis in which variables of interest will appear in only one of the $\pi$ terms. That's always possible as long of the variables of interest are 'free' variables. 
+
+\subsection{Specific solutions}
+When the non-dimensionalization of Equation~\ref{eq:fnc} results in a single $\pi$ term
+\begin{equation}
+    g(\pi_1) = 0,
+\end{equation}
+then $\pi_1$ is a root of $g$. Assuming $g$ has only a single root (or discrete number of them), we see $\pi_1$ itself must be an (unknown) constant
+\begin{equation}
+    \pi_1 = c.
+\end{equation}
+When $g$ is a function of more than one dimensionless product
+\begin{equation}
+    g(\pi_1, \pi_2) = 0,
+\end{equation}
+we may invoke the Implicit Function Theorem to solve for one of the arguments and write instead
+\begin{equation}
+    \pi_1 = h_1(\pi_2).
+\end{equation}
+Similarly for three arguments $g(\pi_1, \pi_2, \pi_3) = 0$ we have
+\begin{equation}
+    \pi_1 = h_2(\pi_2, \pi_3).
+\end{equation}
 
 \subsection{References}
 \bibliographystyle{alpha}
