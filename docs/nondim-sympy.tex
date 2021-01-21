@@ -84,7 +84,7 @@ is dimensionally homogeneous, if it can be written as
 \end{equation}
 Here $\left\{\pi_1,\pi_2,\ldots,\pi_{N_p}\right\} = \Pi$ is a complete (and independent) set of $|\Pi|={N_p}$ dimensionless variable products. 
 
-Without loss of generality, consider 3 variables $x,y,z$. Letting $\left[\cdot\right]$ denote the dimension we require
+Without loss of generality, consider 3 variables $x,y,z$. Let $\left[\cdot\right]$ denote the dimension, we require
 \begin{align}
     \left[\pi_i\right] &= \left[x^{\alpha_i}y^{\beta_i}z^{\gamma_i} \right] \\
     &=\left[x^{\alpha_i}\right]\left[y^{\beta_i}\right]\left[z^{\gamma_i}\right] \\
@@ -108,9 +108,9 @@ where $\text{dim}(\cdot)$ yields the vector representation of the physical dimen
 \begin{equation}
     \alpha_i\text{dim}(x) + \beta_i\text{dim}(y) + \gamma_i\text{dim}(z) = \mathbf{0},
 \end{equation}
-We may rewrite the above equation as a matrix-vector product
+which we simplify in terms of a matrix-vector product
 \begin{equation}
-    \begin{pmatrix} \text{dim}(x) & \text{dim}(y) & \text{dim}(z)\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix} = \mathbf{D}\mathbf{v},
+    \begin{pmatrix} \mathbf{D}\mathbf{v} = \text{dim}(x) & \text{dim}(y) & \text{dim}(z)\end{pmatrix}\begin{pmatrix} \alpha_i \\ \beta_i \\ \gamma_i\end{pmatrix},
 \end{equation}
 where $\mathbf{D}$ is the $N_k \times N_v$ dimensional matrix.
 
@@ -122,7 +122,7 @@ The set of vectors $\{\mathbf{v}|\mathbf{D}\mathbf{v}=\mathbf{0}\}$ span a sub-s
 \begin{equation}
     N_p = N_v - \text{rank}(\mathbf{M}) = \text{nullity}(\mathbf{M}) = |\Pi|,
 \end{equation}
-and determines the number of independent dimensionless products. The span of the null-space is not unique and this leads potentially different set of $\Pi$. For practical purposes one should try to find a basis in which variables of interest will appear in only one of the $\pi$ terms. That's always possible as long of the variables of interest are 'free' variables. 
+and determines the number of independent dimensionless products. The span of the null-space is not unique and this leads potentially different $\Pi$ sets. For practical purposes one should try to find a basis in which variables of interest will appear in only one of the $\pi$ terms. That's always possible as long of the variables of interest are 'free' variables. 
 
 \subsection{Specific solutions}
 When the non-dimensionalization of Equation~\ref{eq:fnc} results in a single $\pi$ term
