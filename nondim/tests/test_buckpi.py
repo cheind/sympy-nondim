@@ -123,18 +123,40 @@ def test_newton_2nd_constant():
     # sqrt(g)/sqrt(xo)*t = C
     r = nondim(eq, dimmap)
     assert isinstance(r, sympy.Eq)
-    assert isinstance(r.lhs, sympy.Symbol)
-    assert not isinstance(r.rhs, sympy.Function)
-    assert r.lhs.name == 'C'
-    assert sympy.simplify(r.rhs - sympy.sqrt(g)*t/sympy.sqrt(xo)) == 0
+    assert isinstance(r.rhs, sympy.Symbol)
+    assert not isinstance(r.lhs, sympy.Function)
+    assert r.rhs.name == 'C'
+    assert sympy.simplify(r.lhs - sympy.sqrt(g)*t/sympy.sqrt(xo)) == 0
 
     eq = sympy.Eq(t**2, sympy.Function('f')(g,xo))
     # g*t**2/xo = C
     r = nondim(eq, dimmap)
     assert isinstance(r, sympy.Eq)
-    assert isinstance(r.lhs, sympy.Symbol)
-    assert not isinstance(r.rhs, sympy.Function)
-    assert r.lhs.name == 'C'
-    assert sympy.simplify(r.rhs - g*t**2/xo) == 0
+    assert isinstance(r.rhs, sympy.Symbol)
+    assert not isinstance(r.lhs, sympy.Function)
+    assert r.rhs.name == 'C'
+    assert sympy.simplify(r.lhs - g*t**2/xo) == 0
 
-    
+
+def test_gas_pressure():
+    # Taken from A Student’s Guide to Dimensional Analysis pp. 17
+    # Main point here is that allow enter weight as m*g into dim. analysis rather than m,g 
+    m, g, p, A = sympy.symbols('m g p A')
+    dimmap = {
+        m: units.mass,
+        g: units.acceleration,
+        p: units.pressure,
+        A: units.length**2
+    }
+
+    # p = f(A,mg)
+    eq = sympy.Eq(p, sympy.Function('f')(A, m*g))
+    # A*p/(g*m) = C    
+    r = nondim(eq, dimmap)
+    assert isinstance(r, sympy.Eq)
+    assert p in r.lhs.free_symbols
+    assert sympy.simplify(sympy.solve(r, p)[0] - r.rhs*(m*g)/A) == 0 # rhs is C
+
+    # Note, in this case nondim returns the same result even if m,g are passed seperately.
+    # eq = sympy.Eq(p, sympy.Function('f')(A, m, g))
+    # r = nondim(eq, dimmap)

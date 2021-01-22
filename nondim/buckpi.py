@@ -155,7 +155,7 @@ def nondim(
         # See: Dimensional Analysis: Michael J. Kirby and Gerhard Dangelmayr
         # Class Notes, Dimensional Analysis Revised Sep 21, 2003
         # Also: Theorem (7-34), APPLIED DIMENSIONAL ANALYSIS AND MODELING       
-        return Eq(Symbol('C', constant=True), groups[0])
+        return Eq(groups[0], Symbol('C', constant=True))
     else:
         # Search for first term that includes the original dependent variable
         deps = [g for g in groups if eq.lhs in g.free_symbols]
